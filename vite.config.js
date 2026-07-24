@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'url'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/seafood/',
+  base: '/docket/',
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] }),

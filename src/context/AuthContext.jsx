@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useContext } from "react"
 import { publicAxiosRequest } from "../services/HttpMethod"
-import { customerslogin, empLoginURL, loginURL } from "../services/ConstantServies"
+import { customerslogin, loginURL } from "../services/ConstantServies"
 import { getCompanyInfo, getEmployeeInfo } from "../services/authServices"
 // import { useNavigate } from "react-router-dom"
 import { toast } from "react-toastify"
@@ -22,13 +22,13 @@ export const AuthProvider = ({ children }) => {
   // const navigate = useNavigate()
   useEffect(() => {
     const fetchProfile = async () => {
-      try {
-        const res = await getEmployeeInfo();
-        setProfile(res?.data[0]);
+      // try {
+      //   const res = await getEmployeeInfo();
+      //   setProfile(res?.data[0]);
 
-      } catch (error) {
-        console.error('Failed to fetch profile:', error);
-      }
+      // } catch (error) {
+      //   console.error('Failed to fetch profile:', error);
+      // }
       try {
         const res = await getCompanyInfo();
         setCompanyInfo(res?.data);
@@ -64,81 +64,6 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
-  const login = async (userData) => {
-    try {
-      const isMobileNumber = /^\d{10}$/.test(userData.mobile);
-
-      const payload = isMobileNumber
-        ? {
-          mobile_number: userData.mobile,
-          pin: userData.password,
-        }
-        : {
-          emp_id: userData.mobile, // Using the same field but as emp_id
-          pin: userData.password,
-        };
-
-      // console.log("Sending login payload:", payload);
-      const response = await publicAxiosRequest.post(empLoginURL + `${userData.company}/`, payload, {
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      // console.log("Login response:", response);
-      if (response.status === 200) {
-        setError("");
-        const { token, emp_id, e_id } = response.data;
-        localStorage.setItem('userToken', token);
-        localStorage.setItem('mobileNumber', isMobileNumber ? userData.mobile : ''); // Only store if it's a mobile number
-        localStorage.setItem('empId', emp_id);
-        localStorage.setItem('empNoId', String(e_id));
-        localStorage.setItem('userPin', userData.password);
-        localStorage.setItem("seaUser_E", JSON.stringify(userData));
-        localStorage.setItem("dbName", userData.company);
-        setCurrentUser(userData);
-        toast.success("Login successful!");
-        
-        // Fetch profile to determine redirect
-        try {
-          const profileRes = await getEmployeeInfo();
-          // console.log("Profile response:", profileRes);
-          const userProfile = profileRes?.data[0];
-          // console.log("userProfile:", userProfile);
-          setProfile(userProfile);
-          
-          if (userProfile) {
-            const role = userProfile.is_manager;
-            // console.log("role from is_manager:", role);
-            const redirectUrl = role ? "/qc/manager-dashboard" : "/qc/tester-dashboard";
-            // console.log("Redirecting to:", redirectUrl);
-            window.location.href = redirectUrl;
-            return true;
-          } else {
-            // console.log("userProfile is null/undefined, redirecting to tester dashboard");
-            window.location.href = "/qc/tester-dashboard";
-          }
-        } catch (profileError) {
-          console.error('Failed to fetch profile:', profileError);
-          // Fallback redirect if profile fetch fails
-          window.location.href = "/qc/tester-dashboard";
-        }
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      const errorMsg = error.response?.data?.error || error.message;
-      console.log("Login error message:", errorMsg);
-      setError(errorMsg);
-      toast.error(errorMsg);
-      if (error.response && error.response.status === 401) {
-        console.log("Invalid credentials");
-        return false;
-      } else if (error.response && error.response.status === 500) {
-        console.log("Server error");
-        return false;
-      }
-      return false;
-    }
-  };
-
   const SeaFoodLogin = async (userData) => {
      try {
       const payload = {
@@ -158,7 +83,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("dbName", db_name[1]);
         setCurrentUser(userData);
         toast.success("Login successful!");
-        window.location.href = "/seafood/configuration";
+        window.location.href = "/docket/document-management";
         return true;
       }
     } catch (error) {
@@ -177,10 +102,10 @@ export const AuthProvider = ({ children }) => {
       window.location.href = "/customer/login.html";
     }
     if(localStorage.getItem("seaUser")){
-      window.location.href = "/seafood/user/login";
+      window.location.href = "/docket/user/login";
     }
     if(localStorage.getItem("seaUser_E")){
-      window.location.href = "/seafood/emp/login";
+      window.location.href = "/docket/emp/login";
     }
     localStorage.removeItem("seaUser")
     localStorage.removeItem("seaUser_E")
@@ -217,7 +142,6 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
-    login,
     logout,
     loading,
     profile,

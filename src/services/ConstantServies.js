@@ -5,17 +5,14 @@ const db_name = localStorage.getItem("dbName");
 export const endpoint = `${localhost}${apiURL}`;
 export const hrendpoint = `${newlocalhost}/api`;
 export const newhrendpoint = `${newlocalhost}/hr_api`;
-export const newPPpont = `${newlocalhost}/pp_api/config`;
-export const PPendPoint = `${newlocalhost}/pp_api`;
 
 export const userSignUpURL = `${endpoint}/customer_sign_up/${db_name}/`;
 export const userLoginURL = `${endpoint}/customer_login/${db_name}/`;
 export const loginURL = `${localhost}/rest-auth/login/`;
-export const empLoginURL = `${newhrendpoint}/emp_user_login/`;
+
 export const resetPasswordURL = `${endpoint}/reset_password/${db_name}/`;
 export const resetPasswordConfirmURL = `${endpoint}/reset_password_confirm/`;
 export const changePasswordURL = `${endpoint}/change_password/`;
-
 export const getCustomerListURL = `${hrendpoint}/customer_list/${db_name}/`;
 export const getCustomerDetailListURL = `${endpoint}/customer_detail_list/${db_name}/`;
 
@@ -27,40 +24,13 @@ export const setuserpin = `${endpoint}/set_user_pin/${db_name}/`;
 export const getCompany = `${endpoint}/get_applicable_site/`;
 export const forgetPin = `${newhrendpoint}/emp_forget_pin/`;
 export const customerslogin = `${hrendpoint}/customer_user_login/`;
-export const getEquipment = `${endpoint}/get_facility_list/${db_name}/`;
-//seaFood api
-export const getPoItemList = `${hrendpoint}/get_po_list/${db_name}/`;
-export const getInventoryItemList = `${hrendpoint}/inventory_item_list/${db_name}/`;
-export const processPoRequest = `${hrendpoint}/process_po_request/${db_name}/`;
-export const processQCallocation = `${hrendpoint}/process_po_qc_data/${db_name}/`;
-export const getPOqcList = `${hrendpoint}/get_po_qc_list/${db_name}/`;
-export const getProductListUrl = `${hrendpoint}/products/${db_name}/`;
-export const getProcessActivityListUrl = `${hrendpoint}/get_process_activity_list/${db_name}/`;
-export const getYieldConfigUrl = `${newPPpont}/${db_name}/yield-configs/`;
-export const getMachineCapacityUrl = `${newPPpont}/${db_name}/machines/`;
-export const PlanningConfigUrl = `${newPPpont}/${db_name}/config/`;
-export const SpeciesUrl = `${newPPpont}/${db_name}/species/`;
-export const GradesUrl = `${newPPpont}/${db_name}/grades/`;
-export const OrdersUrl = `${newPPpont}/${db_name}/orders/`;
-export const OrdersByDestinationUrl = `${newPPpont}/${db_name}/orders/demand-by-destination/`;
-export const ItemCategoryListUrl = `${hrendpoint}/item_category_list/${db_name}/`;
-export const CapacityPlanningUrl = `${PPendPoint}/capacity/plan/${db_name}/`;
-export const PlanningReportUrl = `${PPendPoint}/engine/report/${db_name}/`;
-export const CreateBatchUrl = `${PPendPoint}/engine/generate/${db_name}/`;
-export const InventoryStatusUrl = `${PPendPoint}/inventory/status/${db_name}/`;
-export const InventoryProjectionUrl = `${PPendPoint}/inventory/projection/${db_name}/`;
 
-export const BatchesUrl = `${newPPpont}/${db_name}/batches/`;
-export const GradingSessionsUrl = `${newPPpont}/${db_name}/grading-sessions/`;
-export const ProcurementPlanUrl = `${PPendPoint}/engine/procurement-plan/${db_name}/`;
-export const WorkForceCoverageUrl = `${PPendPoint}/workforce/coverage/${db_name}/`;
-export const WorkForceAssignUrl = `${PPendPoint}/workforce/assign/${db_name}/`;
-export const WorkForceReleaseUrl = `${PPendPoint}/workforce/release/${db_name}/`;
-export const WorkForceAvailableUrl = `${PPendPoint}/workforce/available/${db_name}/`;
-export const WorkForceAllocationUrl = `${PPendPoint}/workforce/allocations/${db_name}/`;
-export const CreateGRNUrl = `${PPendPoint}/process_grn/${db_name}/`;
-export const RecordGradesUrl = `${PPendPoint}/process_grading_session/${db_name}/`;
-export const GetBaseUnitListUrl = `${hrendpoint}/get_base_unit_list/${db_name}/`;
-export const ActiveAlertsUrl = `${newPPpont}/${db_name}/alerts/active/`;
-export const DashboardSummaryUrl = `${PPendPoint}/dashboard/summary/${db_name}/`;
-export const Supplierprofile = `${newPPpont}/${db_name}/supplier-profiles/`;
+
+export const getProcessActivityListUrl = `${hrendpoint}/get_process_activity_list/${db_name}/`;
+
+
+export const getProcessListUrl = `${hrendpoint}/get_process_list/${db_name}/`;
+export const getDocumentTypeListUrl = `${hrendpoint}/get_document_type_list/${db_name}/`;
+export const getActivityDocumentListUrl = `${hrendpoint}/get_activity_document_list/${db_name}/`;
+
+export const processActivityDocument = `${hrendpoint}/process_activity_document/${db_name}/`;

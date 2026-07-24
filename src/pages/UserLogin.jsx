@@ -1,54 +1,44 @@
 import { useState } from "react";
 import styled, { createGlobalStyle, keyframes } from "styled-components";
 import { FiUser, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
-import { GiAnchor, GiFishingBoat } from "react-icons/gi";
-import { MdOutlineWaves } from "react-icons/md";
 import {
-  TbShoppingCartPlus,
-  TbClipboardList,
-  TbBuildingFactory2,
-} from "react-icons/tb";
-import { BsBoxSeam } from "react-icons/bs";
+  FiFileText,
+  FiRefreshCw,
+  FiShield,
+  FiLayers,
+} from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "react-toastify";
 
 // ─── Theme ─────────────────────────────────────────────────────────────────────
 const T = {
-  // Page bg: light so a black-text navbar above is clearly visible
-  pageBg:    "#E4F3F8",
-  pageBg2:   "#C6E5EF",
+  // Page bg: light corporate blue-gray
+  pageBg:    "#F2F5FC",
+  pageBg2:   "#E7ECFB",
 
-  // Left panel: mid-tone ocean teal (not black/dark)
-  panelFrom: "#1A9CB0",
-  panelMid:  "#0E7A91",
-  panelTo:   "#0A6070",
+  // Left panel: deep indigo / blue enterprise gradient
+  panelFrom: "#111C42",
+  panelMid:  "#1B2C6B",
+  panelTo:   "#2A3FA6",
 
-  aqua:      "#4ECDC4",
-  seafoam:   "#7EE8E0",
+  accent:    "#7C93FF",
+  accent2:   "#B7C4FF",
   white:     "#FFFFFF",
 
   formBg:    "#FFFFFF",
-  text:      "#0D2B3E",
-  muted:     "#5A7A8A",
-  border:    "#C8DDED",
-  inputBg:   "#F4FAFB",
+  text:      "#101828",
+  muted:     "#667085",
+  border:    "#E1E6F0",
+  inputBg:   "#F7F9FC",
 
-  btn:       "#0E7A91",
-  btnHover:  "#0A5E72",
+  btn:       "#3457E0",
+  btnHover:  "#2340C2",
 };
 
 // ─── Keyframes ─────────────────────────────────────────────────────────────────
-const waveMove = keyframes`
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-`;
 const floatY = keyframes`
   0%,100% { transform: translateY(0) rotate(-3deg); }
   50%      { transform: translateY(-14px) rotate(3deg); }
-`;
-const bubbleUp = keyframes`
-  0%   { transform: translateY(0) scale(1); opacity: 0.5; }
-  100% { transform: translateY(-160px) scale(0.2); opacity: 0; }
 `;
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(22px); }
@@ -59,16 +49,16 @@ const slideR = keyframes`
   to   { opacity: 1; transform: translateX(0); }
 `;
 const pulseBadge = keyframes`
-  0%,100% { box-shadow: 0 0 0 0 rgba(78,205,196,0.45); }
-  50%      { box-shadow: 0 0 0 8px rgba(78,205,196,0); }
+  0%,100% { box-shadow: 0 0 0 0 rgba(124,147,255,0.45); }
+  50%      { box-shadow: 0 0 0 8px rgba(124,147,255,0); }
 `;
 
 // ─── Global ────────────────────────────────────────────────────────────────────
 const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Inter', sans-serif;
     min-height: 100vh;
     background: ${T.pageBg};
   }
@@ -85,9 +75,7 @@ const Page = styled.div`
   justify-content: center;
   position: relative;
   overflow: hidden;
-  /* padding-top: 7vh;  */
   padding: 120px 16px;
-
 `;
 
 const Blob = styled.div`
@@ -102,29 +90,17 @@ const Blob = styled.div`
   bottom: ${({ $b }) => $b ?? "auto"};
   opacity: ${({ $o }) => $o ?? 0.18};
   pointer-events: none;
-  filter: blur(60px);
+  filter: blur(70px);
 `;
 
-const Bubble = styled.span`
+const GridOverlay = styled.div`
   position: absolute;
-  bottom: ${({ $b }) => $b};
-  left: ${({ $l }) => $l};
-  width: ${({ $s }) => $s};
-  height: ${({ $s }) => $s};
-  border-radius: 50%;
-  background: rgba(14,122,145,${({ $o }) => $o ?? 0.14});
-  animation: ${bubbleUp} ${({ $d }) => $d} ease-in infinite;
-  animation-delay: ${({ $dl }) => $dl ?? "0s"};
+  inset: 0;
+  background-image: linear-gradient(rgba(52,87,224,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52,87,224,0.05) 1px, transparent 1px);
+  background-size: 46px 46px;
   pointer-events: none;
-`;
-
-const WaveStrip = styled.div`
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 200%;
-  height: 90px;
-  animation: ${waveMove} 8s linear infinite;
-  pointer-events: none;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 90%);
 `;
 
 // ─── Card ──────────────────────────────────────────────────────────────────────
@@ -134,11 +110,11 @@ const Card = styled.div`
   display: flex;
   width: min(960px, 100%);
   min-height: 560px;
-  border-radius: 28px;
+  border-radius: 24px;
   overflow: hidden;
   box-shadow:
-    0 32px 80px rgba(10,62,96,0.16),
-    0 0 0 1px rgba(78,205,196,0.22);
+    0 30px 70px rgba(16,24,64,0.16),
+    0 0 0 1px rgba(124,147,255,0.16);
   animation: ${fadeUp} 0.65s ease both;
 
   @media (max-width: 720px) {
@@ -150,7 +126,7 @@ const Card = styled.div`
 // ─── Left Panel ────────────────────────────────────────────────────────────────
 const Left = styled.div`
   flex: 1.05;
-  background: linear-gradient(150deg, ${T.panelFrom} 0%, ${T.panelMid} 50%, ${T.panelTo} 100%);
+  background: linear-gradient(150deg, ${T.panelFrom} 0%, ${T.panelMid} 55%, ${T.panelTo} 100%);
   padding: 44px 38px 40px;
   display: flex;
   flex-direction: column;
@@ -170,11 +146,11 @@ const Left = styled.div`
   }
 `;
 
-const FloatBoat = styled.div`
+const FloatIcon = styled.div`
   position: absolute;
-  right: 20px; top: 32px;
-  font-size: 96px;
-  color: rgba(255,255,255,0.08);
+  right: 18px; top: 30px;
+  font-size: 100px;
+  color: rgba(255,255,255,0.07);
   animation: ${floatY} 5s ease-in-out infinite;
 
   @media (max-width: 720px) { display: none; }
@@ -190,31 +166,31 @@ const LogoRow = styled.div`
 const LogoBadge = styled.div`
   width: 50px; height: 50px;
   border-radius: 14px;
-  background: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.14);
   backdrop-filter: blur(8px);
-  border: 1.5px solid rgba(255,255,255,0.26);
+  border: 1.5px solid rgba(255,255,255,0.24);
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; color: ${T.white};
   animation: ${pulseBadge} 2.8s ease infinite;
   flex-shrink: 0;
 `;
 const LogoName = styled.div`
-  font-family: 'Playfair Display', serif;
-  font-size: 17px; font-weight: 700;
+  font-size: 17px; font-weight: 800;
+  letter-spacing: -0.01em;
   color: ${T.white}; line-height: 1.2;
 `;
 const LogoSub = styled.div`
   font-size: 9.5px; font-weight: 800;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: ${T.seafoam};
+  color: ${T.accent2};
   margin-top: 3px;
 `;
 
 const Headline = styled.h1`
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(20px, 2.6vw, 28px);
-  font-weight: 700;
+  font-size: clamp(21px, 2.6vw, 29px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: ${T.white};
   line-height: 1.3;
   margin-bottom: 10px;
@@ -222,13 +198,13 @@ const Headline = styled.h1`
 
   em {
     font-style: normal;
-    color: ${T.seafoam};
+    color: ${T.accent2};
   }
 `;
 
 const Sub = styled.p`
   font-size: 12.5px;
-  color: rgba(255,255,255,0.58);
+  color: rgba(255,255,255,0.6);
   line-height: 1.65;
   margin-bottom: 26px;
   animation: ${slideR} 0.5s ease both 0.3s;
@@ -239,7 +215,7 @@ const ModulesLabel = styled.p`
   font-weight: 800;
   letter-spacing: 2.2px;
   text-transform: uppercase;
-  color: ${T.seafoam};
+  color: ${T.accent2};
   margin-bottom: 11px;
   animation: ${slideR} 0.5s ease both 0.35s;
 `;
@@ -260,24 +236,24 @@ const ModuleCard = styled.div`
   align-items: center;
   gap: 10px;
   padding: 12px 13px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 13px;
   cursor: default;
   transition: all 0.22s ease;
 
   &:hover {
-    background: rgba(78,205,196,0.15);
-    border-color: rgba(78,205,196,0.35);
+    background: rgba(124,147,255,0.16);
+    border-color: rgba(124,147,255,0.36);
     transform: translateY(-2px);
   }
 `;
 const ModuleIcon = styled.div`
   width: 33px; height: 33px;
   border-radius: 9px;
-  background: rgba(78,205,196,0.18);
+  background: rgba(124,147,255,0.2);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: ${T.seafoam};
+  font-size: 16px; color: ${T.accent2};
   flex-shrink: 0;
 `;
 const ModuleTitle = styled.div`
@@ -297,9 +273,13 @@ const LeftFooter = styled.div`
   padding-top: 26px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: rgba(255,255,255,0.18);
-  font-size: 19px;
+  gap: 8px;
+  color: rgba(255,255,255,0.4);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+
+  svg { font-size: 13px; }
 `;
 
 // ─── Right Panel ───────────────────────────────────────────────────────────────
@@ -318,9 +298,9 @@ const Right = styled.form`
 `;
 
 const Welcome = styled.h2`
-  font-family: 'Playfair Display', serif;
   font-size: clamp(21px, 2.8vw, 27px);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: ${T.text};
   margin-bottom: 5px;
 `;
@@ -332,7 +312,7 @@ const WelcomeSub = styled.p`
 const AccentBar = styled.div`
   width: 42px; height: 3.5px;
   border-radius: 4px;
-  background: linear-gradient(90deg, ${T.btn}, ${T.aqua});
+  background: linear-gradient(90deg, ${T.btn}, ${T.accent});
   margin-bottom: 28px;
 `;
 
@@ -378,16 +358,16 @@ const StyledInput = styled.input`
   padding: 13px 42px;
   border: 1.5px solid ${({ $on }) => ($on ? T.btn : T.border)};
   border-radius: 12px;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 13.5px;
   color: ${T.text};
   background: ${({ $on }) => ($on ? T.white : T.inputBg)};
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-  box-shadow: ${({ $on }) => ($on ? "0 0 0 3px rgba(14,122,145,0.11)" : "none")};
+  box-shadow: ${({ $on }) => ($on ? "0 0 0 3px rgba(52,87,224,0.12)" : "none")};
 
-  &::placeholder { color: #9BB8C6; }
-  &:hover:not(:focus) { border-color: rgba(14,122,145,0.38); }
+  &::placeholder { color: #9AA6C3; }
+  &:hover:not(:focus) { border-color: rgba(52,87,224,0.38); }
 `;
 
 const ForgotRow = styled.div`
@@ -411,7 +391,7 @@ const SignInBtn = styled.button`
   padding: 14px;
   background: linear-gradient(135deg, ${T.btn}, ${T.btnHover});
   color: ${T.white};
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 800;
   border: none;
@@ -419,12 +399,12 @@ const SignInBtn = styled.button`
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 10px;
   transition: all 0.25s ease;
-  box-shadow: 0 6px 22px rgba(14,122,145,0.3);
+  box-shadow: 0 8px 24px rgba(52,87,224,0.32);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(14,122,145,0.4);
-    background: linear-gradient(135deg, #15A0B8, ${T.btn});
+    box-shadow: 0 14px 32px rgba(52,87,224,0.42);
+    background: linear-gradient(135deg, #4468F5, ${T.btn});
   }
   &:active { transform: translateY(0); }
   svg { font-size: 16px; }
@@ -435,24 +415,15 @@ const FormFooter = styled.p`
   color: ${T.muted};
   text-align: center;
   margin-top: 22px;
-  opacity: 0.65;
+  opacity: 0.7;
 `;
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 const MODULES = [
-  { icon: <TbShoppingCartPlus />, title: "Purchase Management",    desc: "Suppliers & POs"      },
-  { icon: <TbClipboardList     />, title: "Order Management",      desc: "Sales & fulfillment"  },
-  { icon: <TbBuildingFactory2  />, title: "Production Management", desc: "Processing & batches" },
-  { icon: <BsBoxSeam />, title: "Inventory Management",  desc: "Stock & warehousing"  },
-];
-
-const BUBBLES = [
-  { b: "6%",  l: "5%",  s: "10px", d: "4.2s", dl: "0s",   o: 0.16 },
-  { b: "4%",  l: "18%", s: "7px",  d: "3.6s", dl: "1.1s", o: 0.12 },
-  { b: "10%", l: "33%", s: "9px",  d: "5s",   dl: "0.4s", o: 0.1  },
-  { b: "3%",  l: "55%", s: "12px", d: "6.2s", dl: "1.8s", o: 0.11 },
-  { b: "8%",  l: "70%", s: "8px",  d: "4.8s", dl: "0.7s", o: 0.14 },
-  { b: "5%",  l: "85%", s: "6px",  d: "3.9s", dl: "2.2s", o: 0.09 },
+  { icon: <FiFileText  />, title: "Docket Activity Update",  desc: "Edit Activity Details"    },
+  { icon: <FiRefreshCw />, title: "Activity Document upoad",  desc: "Add, Edit and Delete Document from Activity"         },
+  { icon: <FiShield    />, title: "Email Template",        desc: "Add or Modify Email template"     },
+  { icon: <FiLayers    />, title: "Automate Email Template",      desc: "Automate Email sending"       },
 ];
 
 // ─── Reusable input field ──────────────────────────────────────────────────────
@@ -520,48 +491,37 @@ export default function UserLogin() {
       <GlobalStyle />
       <Page>
         {/* Background blobs */}
-        <Blob $c="rgba(14,122,145,0.17)"  $w="480px" $t="-130px" $l="-100px" />
-        <Blob $c="rgba(78,205,196,0.13)"  $w="380px" $b="-80px"  $r="-80px"  />
-        <Blob $c="rgba(14,122,145,0.09)"  $w="280px" $t="42%"    $l="62%"    />
+        <Blob $c="rgba(52,87,224,0.16)"  $w="480px" $t="-130px" $l="-100px" />
+        <Blob $c="rgba(124,147,255,0.14)" $w="380px" $b="-80px"  $r="-80px"  />
+        <Blob $c="rgba(52,87,224,0.08)"  $w="280px" $t="42%"    $l="62%"    />
 
-        {/* Rising bubbles */}
-        {BUBBLES.map((b, i) => (
-          <Bubble key={i} $b={b.b} $l={b.l} $s={b.s} $d={b.d} $dl={b.dl} $o={b.o} />
-        ))}
-
-        {/* Bottom wave */}
-        <WaveStrip>
-          <svg viewBox="0 0 1440 90" preserveAspectRatio="none" width="100%" height="100%">
-            <path fill="rgba(14,122,145,0.1)"
-              d="M0,45 C360,0 720,90 1080,45 C1260,22 1380,65 1440,45 L1440,90 L0,90 Z"/>
-            <path fill="rgba(78,205,196,0.07)"
-              d="M0,65 C240,25 480,85 720,55 C960,30 1200,78 1440,55 L1440,90 L0,90 Z"/>
-          </svg>
-        </WaveStrip>
+        {/* Subtle grid pattern */}
+        <GridOverlay />
 
         <Card>
           {/* ══ LEFT ══ */}
           <Left>
-            <FloatBoat><GiFishingBoat /></FloatBoat>
+            <FloatIcon><FiFileText /></FloatIcon>
 
             <LogoRow>
-              <LogoBadge><GiAnchor /></LogoBadge>
+              <LogoBadge><FiFileText /></LogoBadge>
               <div>
-                <LogoName>Atomwalk SeaFood Industry</LogoName>
-                <LogoSub>ERP Platform</LogoSub>
+                <LogoName>Doccket</LogoName>
+                <LogoSub>Enterprise Doccket Management Platform</LogoSub>
               </div>
             </LogoRow>
 
             <Headline>
-              Seafood Business,<br />
-              <em>Fully Managed</em>
+              Manage Docket,<br />
+              <em>Securely Organized</em>
             </Headline>
 
             <Sub>
-              End-to-end ERP built for the seafood industry — from procurement to the production floor, all in one platform.
+              Centralize business documents, automate workflows, and collaborate securely
+              from a single platform.
             </Sub>
 
-            <ModulesLabel>Modules you can access</ModulesLabel>
+            <ModulesLabel>Platform Capabilities</ModulesLabel>
 
             <ModulesGrid>
               {MODULES.map(({ icon, title, desc }) => (
@@ -576,9 +536,8 @@ export default function UserLogin() {
             </ModulesGrid>
 
             <LeftFooter>
-              <MdOutlineWaves />
-              <GiFishingBoat />
-              <MdOutlineWaves />
+              <FiShield />
+              <span>Enterprise-grade security & compliance</span>
             </LeftFooter>
           </Left>
 
@@ -627,7 +586,7 @@ export default function UserLogin() {
               Login <FiArrowRight />
             </SignInBtn>
 
-            <FormFooter>© Atomwalk seafood ERP. All rights reserved.</FormFooter>
+            <FormFooter>© DocuHub Document Management. All rights reserved.</FormFooter>
           </Right>
         </Card>
       </Page>
