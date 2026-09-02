@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import styles from "./DocumentManagement.module.css";
-import { Toolbar, DataTable, Breadcrumbs, DetailField, ICONS } from "./ProcessList";
+import { FaPlus } from "react-icons/fa";
+import { Toolbar, DataTable, Breadcrumbs, DetailField } from "./ProcessList";
 import SelectDocumentModal from "./SelectDocumentModal";
 import { getProcessActivityList, getActivityDocumentList, addActivityDocument, updateActivityDocument } from "../../services/productServices";
 
@@ -18,6 +19,10 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(""); // "ADD" | "UPDATE"
 
   // Fallback for direct links / refreshes where the activity object wasn't
   // passed through navigation state — there's no "get single activity"
@@ -38,7 +43,7 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
     setLoading(true);
     getActivityDocumentList({activity_id: activityId})
       .then((res) => {
-        const withUiState = (res.data || []).map((row) => ({ ...row, _isEditing: false }));
+        const withUiState = (res.data || []).map((row) => ({ ...row, _isEditing: false, errors: {}, }));
         setDocumentList(withUiState);
       })
       .catch((err) => console.log(err))
@@ -59,61 +64,105 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
   );
 
   const updateRow = (id, patch) => {
-    setDocumentList((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setDocumentList((prev) =>
+      prev.map((row) => {
+        if (row.id !== id) return row;
+
+        const updatedRow = { ...row, ...patch };
+
+        // Remove the validation error as soon as the user types
+        if (patch.name !== undefined && patch.name.trim() !== "") {
+          updatedRow.errors = {
+            ...updatedRow.errors,
+            name: "",
+          };
+        }
+
+        return updatedRow;
+      })
+    );
   };
 
   const handleRemoveRow = (id) => {
     setDocumentList((prev) => prev.filter((row) => row.id !== id));
   };
 
-  const handleSaveRow = async (id) => {
+  const handleSaveRow = (id) => {
 
-    const row = documentList.find(r => r.id === id);
+      const row = documentList.find(r => r.id === id);
 
-    if (!row) return;
+      if (!row) return;
 
-    try {
+      if (!(row.name || "").trim()) {
+          updateRow(id, {
+              errors: {
+                  ...row.errors,
+                  name: "Document name is required.",
+              },
+          });
 
-        if (row.id < 0) {
+          return;
+      }
 
-            // ADD
-            const payload = {
-                document_data: {
-                    activity_id: Number(activityId),
-                    call_mode: "ADD",
-                    document_id: row.document_data.id,
-                    is_mandatory: row.is_mandatory,
-                    name: row.name
-                }
-            };
+      setSelectedRow(row);
 
-            await addActivityDocument(payload);
+      if (row.id < 0) {
+          setConfirmAction("ADD");
+      } else {
+          setConfirmAction("UPDATE");
+      }
 
-        } else {
+      setConfirmModalOpen(true);
+  };
 
-            // UPDATE
-            const payload = {
-                document_data: {
-                    activity_document_id: row.id,
-                    activity_id: Number(activityId),
-                    call_mode: "UPDATE",
-                    document_id: row.document_data.id,
-                    is_mandatory: row.is_mandatory,
-                    name: row.name
-                }
-            };
+  const confirmSave = async () => {
 
-            await updateActivityDocument(payload);
+      if (!selectedRow) return;
 
-        }
+      try {
 
-        loadDocumentList();
+          if (confirmAction === "ADD") {
 
-    } catch (err) {
+              const payload = {
+                  document_data: {
+                      activity_id: Number(activityId),
+                      call_mode: "ADD",
+                      document_id: selectedRow.document_data.id,
+                      is_mandatory: selectedRow.is_mandatory,
+                      name: selectedRow.name
+                  }
+              };
 
-        console.log(err);
+              await addActivityDocument(payload);
 
-    }
+          } else {
+
+              const payload = {
+                  document_data: {
+                      activity_document_id: selectedRow.id,
+                      activity_id: Number(activityId),
+                      call_mode: "UPDATE",
+                      document_id: selectedRow.document_data.id,
+                      is_mandatory: selectedRow.is_mandatory,
+                      name: selectedRow.name
+                  }
+              };
+
+              await updateActivityDocument(payload);
+
+          }
+
+          setConfirmModalOpen(false);
+          setSelectedRow(null);
+          setConfirmAction("");
+
+          loadDocumentList();
+
+      } catch (err) {
+
+          console.log(err);
+
+      }
 
   };
 
@@ -126,6 +175,7 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
       is_mandatory: false,
       document_data: documentType,
       _isEditing: true,
+      errors: {},
     };
     setDocumentList((prev) => [...prev, newRow]);
   };
@@ -134,8 +184,8 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
 
   const columns = [
     {
-      key: "documentName",
-      label: "Document Name",
+      key: "documentType",
+      label: "Document Type",
       render: (row) => row.document_data?.name,
     },
     {
@@ -154,18 +204,30 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
       render: (row) => row.document_data?.size_limit,
     },
     {
-      key: "fieldName",
-      label: "Field Name",
+      key: "DocumentName",
+      label: "Document Name",
       render: (row) =>
         row._isEditing ? (
-          <input
-            type="text"
-            className={styles.searchInput}
-            style={{ width: 170 }}
-            value={row.name}
-            placeholder="Enter field name"
-            onChange={(e) => updateRow(row.id, { name: e.target.value })}
-          />
+          <div>
+            <input
+              type="text"
+              className={`${styles.searchInput} ${
+                row.errors?.name ? styles.inputError : ""
+              }`}
+              style={{ width: 170 }}
+              value={row.name}
+              placeholder="Enter field name"
+              onChange={(e) =>
+                updateRow(row.id, { name: e.target.value })
+              }
+            />
+
+            {row.errors?.name && (
+              <div className={styles.errorText}>
+                {row.errors.name}
+              </div>
+            )}
+          </div>
         ) : (
           row.name
         ),
@@ -176,6 +238,7 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
       render: (row) => (
         <input
           type="checkbox"
+          className={styles.checkbox}
           checked={!!row.is_mandatory}
           disabled={!row._isEditing}
           onChange={(e) => updateRow(row.id, { is_mandatory: e.target.checked })}
@@ -192,7 +255,6 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
               <button
                 type="button"
                 className={styles.linkButton}
-                disabled={!row.name}
                 onClick={() => handleSaveRow(row.id)}
               >
                 Save
@@ -230,6 +292,17 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
 
   return (
     <div>
+      <div style={{ display: "flex",
+    justifyContent: "flex-end",
+    marginBottom: 14, }}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={() => onBack(resolvedProcess)}
+        >
+          ← Back to Activities
+        </button>
+      </div>
       <Breadcrumbs
         items={[
           { label: "Process List", onClick: onBackToList },
@@ -272,14 +345,54 @@ export default function ActivityDocuments({ onBackToList, onBack }) {
 
       <div style={{ marginTop: 14 }}>
         <button type="button" className={styles.primaryButton} onClick={() => setModalOpen(true)}>
-          <span aria-hidden="true">{ICONS.plus}</span>
+          <span aria-hidden="true"><FaPlus size={14} /></span>
           Add Document
         </button>
       </div>
-
       {isModalOpen && (
-        <SelectDocumentModal onClose={() => setModalOpen(false)} onSelect={handleSelectDocument} />
+          <SelectDocumentModal
+              onClose={() => setModalOpen(false)}
+              onSelect={handleSelectDocument}
+          />
       )}
+
+      {confirmModalOpen && (
+      <div className={styles.modalOverlay}>
+          <div className={styles.confirmModal}>
+
+              <h3>Save Changes</h3>
+
+              <p>
+                  {confirmAction === "ADD"
+                      ? "Are you sure you want to add this document?"
+                      : "Are you sure you want to update this document?"}
+              </p>
+
+              <div className={styles.confirmButtons}>
+
+                  <button
+                      className={styles.cancelButton}
+                      onClick={() => {
+                          setConfirmModalOpen(false);
+                          setSelectedRow(null);
+                          setConfirmAction("");
+                      }}
+                  >
+                      Cancel
+                  </button>
+
+                  <button
+                      className={styles.primaryButton}
+                      onClick={confirmSave}
+                  >
+                      Save
+                  </button>
+
+              </div>
+
+          </div>
+      </div>
+  )}
     </div>
   );
 }

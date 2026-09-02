@@ -76,12 +76,12 @@ export default function ProcessDetails({ onBack, onOpenDocuments, onOpenEmailTem
             Documents
           </button>
           <button
-            type="button"
-            className={styles.linkButton}
-            onClick={() => onOpenEmailTemplate && onOpenEmailTemplate(resolvedProcess, row)}
-          >
-            Email Template
-          </button>
+          type="button"
+          className={styles.linkButton}
+          onClick={() => onOpenEmailTemplate(resolvedProcess, row)}
+        >
+          {row.mail_template_name ? "Edit Template" : "Add Template"}
+        </button>
         </div>
       ),
     },
@@ -89,6 +89,17 @@ export default function ProcessDetails({ onBack, onOpenDocuments, onOpenEmailTem
 
   return (
     <div>
+      <div style={{ display: "flex",
+    justifyContent: "flex-end",
+    marginBottom: 14, }}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={onBack}
+        >
+          ← Back to Process List
+        </button>
+      </div>
       <Breadcrumbs
         items={[
           { label: "Process List", onClick: onBack },
@@ -96,14 +107,8 @@ export default function ProcessDetails({ onBack, onOpenDocuments, onOpenEmailTem
         ]}
       />
 
-      <div className={styles.tabsContainer} style={{ marginBottom: 18, padding: "16px 20px" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: 20,
-          }}
-        >
+      <div className={styles.detailCard}>
+        <div className={styles.detailGrid}>
           <DetailField label="Process Name" value={process?.process_name} />
           <DetailField label="Process ID" value={process?.process_id || processId} />
           <DetailField label="Process Type" value={process?.process_type} />

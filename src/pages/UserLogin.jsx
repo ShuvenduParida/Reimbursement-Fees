@@ -586,7 +586,7 @@ export default function UserLogin() {
               Login <FiArrowRight />
             </SignInBtn>
 
-            <FormFooter>© DocuHub Document Management. All rights reserved.</FormFooter>
+            {/* <FormFooter>© DocuHub Document Management. All rights reserved.</FormFooter> */}
           </Right>
         </Card>
       </Page>

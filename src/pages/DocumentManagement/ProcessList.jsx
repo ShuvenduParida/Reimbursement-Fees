@@ -1,45 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import styles from "./DocumentManagement.module.css";
-// import { getProcessList } from "../services/productServices";
+import { FaSearch, FaSyncAlt, FaPlus, } from "react-icons/fa";
 import { getProcessList } from "../../services/productServices";
 
-/* ------------------------------------------------------------------ */
-/* Shared UI atoms                                                     */
-/* ------------------------------------------------------------------ */
-/* These are reused by ProcessDetails, ActivityDocuments and            */
-/* SelectDocumentModal. They live here (instead of a 7th file) so the   */
-/* module stays to exactly the files requested, and every page imports  */
-/* them from "./ProcessList" — no circular imports, since ProcessList   */
-/* itself does not import any of the other pages.                       */
-/* ------------------------------------------------------------------ */
 
-export const ICONS = {
-  search: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m21 21-4.3-4.3" strokeLinecap="round" />
-    </svg>
-  ),
-  refresh: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path
-        d="M20 11A8 8 0 1 0 18.5 16M20 5v6h-6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
-  plus: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-    </svg>
-  ),
-  chevronRight: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-};
 
 export function Toolbar({
   searchValue,
@@ -53,7 +17,7 @@ export function Toolbar({
     <div className={styles.toolbar}>
       <div className={styles.searchBox}>
         <span className={styles.searchIcon} aria-hidden="true">
-          {ICONS.search}
+          <FaSearch size={14} />
         </span>
         <input
           type="text"
@@ -66,13 +30,13 @@ export function Toolbar({
       <div className={styles.toolbarActions}>
         {onRefresh && (
           <button type="button" className={styles.iconButton} onClick={onRefresh}>
-            <span aria-hidden="true">{ICONS.refresh}</span>
+            <span aria-hidden="true"><FaSyncAlt size={14} /></span>
             Refresh
           </button>
         )}
         {onAdd && (
           <button type="button" className={styles.primaryButton} onClick={onAdd}>
-            <span aria-hidden="true">{ICONS.plus}</span>
+            <span aria-hidden="true"><FaPlus size={14} /></span>
             {addLabel || "Add"}
           </button>
         )}
@@ -120,23 +84,33 @@ export function DataTable({ columns, rows, emptyMessage, rowKey }) {
 /* without onClick) renders as plain text instead of a link.               */
 export function Breadcrumbs({ items }) {
   return (
-    <nav
-      aria-label="Breadcrumb"
-      style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, flexWrap: "wrap" }}
-    >
+    <nav className={styles.breadcrumb} aria-label="Breadcrumb">
       {items.map((item, index) => (
         <React.Fragment key={`${item.label}-${index}`}>
           {index > 0 && (
-            <span style={{ display: "flex", color: "#9aa1ae" }} aria-hidden="true">
-              {ICONS.chevronRight}
+            <span className={styles.breadcrumbSeparator}>
+              &gt;
             </span>
           )}
+
           {item.onClick ? (
-            <button type="button" className={styles.linkButton} onClick={item.onClick}>
+            <button
+              type="button"
+              className={styles.breadcrumbLink}
+              onClick={item.onClick}
+            >
               {item.label}
             </button>
           ) : (
-            <span className={styles.summaryDescription}>{item.label}</span>
+            <span
+            className={
+              index === items.length - 1
+                ? styles.breadcrumbActive
+                : styles.breadcrumbCurrent
+            }
+          >
+            {item.label}
+          </span>
           )}
         </React.Fragment>
       ))}
@@ -163,6 +137,9 @@ export default function ProcessList({ onView }) {
   const [processList, setProcessList] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
   const loadProcessList = () => {
     setLoading(true);
     getProcessList()
@@ -174,19 +151,26 @@ export default function ProcessList({ onView }) {
       })
       .finally(() => setLoading(false));
   };
-
   useEffect(() => {
     loadProcessList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const rows = useMemo(
-    () =>
-      processList.filter((p) =>
-        (p.process_name || "").toLowerCase().includes(search.toLowerCase())
-      ),
-    [search, processList]
-  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const filteredRows = useMemo(() => {
+    return processList.filter((p) =>
+      (p.process_name || "").toLowerCase().includes(search.toLowerCase())
+    );
+  }, [search, processList]);
+
+  const totalPages = Math.ceil(filteredRows.length / ITEMS_PER_PAGE);
+
+  const rows = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredRows.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredRows, currentPage]);
 
   const columns = [
     { key: "process_name", label: "Process Name" },
@@ -220,6 +204,27 @@ export default function ProcessList({ onView }) {
         rowKey={(row) => row.process_id}
         emptyMessage={loading ? "Loading processes..." : "No processes found."}
       />
+      <div className={styles.pagination}>
+      <button
+        className={styles.pageButton}
+        disabled={currentPage === 1}
+        onClick={() => setCurrentPage((p) => p - 1)}
+      >
+        ← Previous
+      </button>
+
+      <span className={styles.pageInfo}>
+        Page {currentPage} of {totalPages || 1}
+      </span>
+
+      <button
+        className={styles.pageButton}
+        disabled={currentPage === totalPages || totalPages === 0}
+        onClick={() => setCurrentPage((p) => p + 1)}
+      >
+        Next →
+      </button>
+    </div>
     </div>
   );
 }

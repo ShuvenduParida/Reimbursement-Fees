@@ -8,13 +8,14 @@ import { ThemeProvider } from "./context/ThemeContext";
 // Auth & Protected Routes
 import { AuthProvider } from "./context/AuthContext";
 
-import Profile from "./pages/Profile";
+
 
 // Public Pages
 
 import UserLogin from "./pages/UserLogin";
 import NotFound from "./pages/NotFound";
 import DocumentManagement from "./pages/DocumentManagement/DocumentManagement";
+import EmailTemplate from "./pages/EmailTemplate/EmailTemplate";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 
@@ -39,9 +40,11 @@ function App() {
                   }
                 >
                   
-                  <Route path="/profile" element={<Profile />} />
+                  
                   <Route path="/document-management/*" element={<DocumentManagement />} />
+                  <Route path="email-template/:activityId/*" element={<EmailTemplate />} />
                 </Route>
+                
 
                 {/* Catch All */}
                 {/* <Route path="*" element={<Navigate to="/" replace />} /> */}

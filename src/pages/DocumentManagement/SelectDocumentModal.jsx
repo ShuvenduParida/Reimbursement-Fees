@@ -3,6 +3,8 @@ import styles from "./DocumentManagement.module.css";
 import { DataTable } from "./ProcessList";
 import { getDocumentTypeList } from "../../services/productServices";
 
+
+
 const overlayStyle = {
   position: "fixed",
   inset: 0,
@@ -25,6 +27,8 @@ const panelStyle = {
 export default function SelectDocumentModal({ onClose, onSelect }) {
   const [documentTypeList, setDocumentTypeList] = useState([]);
   const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -35,6 +39,15 @@ export default function SelectDocumentModal({ onClose, onSelect }) {
       .catch((err) => console.log(err))
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredDocumentTypeList = documentTypeList.filter((doc) => {
+  const search = searchTerm.toLowerCase();
+
+  return (
+    doc.name.toLowerCase().includes(search) ||
+    doc.document_code.toLowerCase().includes(search)
+  );
+  });
 
   const columns = [
     { key: "name", label: "Name" },
@@ -81,9 +94,18 @@ export default function SelectDocumentModal({ onClose, onSelect }) {
             Close
           </button>
         </div>
+        <div className={styles.modalSearchContainer}>
+        <input
+          type="text"
+          className={styles.modalSearchInput}
+          placeholder="Search by document name or code..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+         </div>
         <DataTable
           columns={columns}
-          rows={documentTypeList}
+          rows={filteredDocumentTypeList}
           rowKey={(row) => row.id}
           emptyMessage={loading ? "Loading document types..." : "No document types found."}
         />

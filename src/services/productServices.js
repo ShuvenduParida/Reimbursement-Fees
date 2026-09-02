@@ -1,4 +1,4 @@
-import { setuserpin, getCompany, forgetPin, profileDtlURL,getProcessListUrl , getDocumentTypeListUrl, getProcessActivityListUrl, getActivityDocumentListUrl, processActivityDocument } from "../services/ConstantServies";
+import { setuserpin, getCompany, forgetPin, profileDtlURL,getProcessListUrl , getDocumentTypeListUrl, getProcessActivityListUrl, getActivityDocumentListUrl, processActivityDocument, getActivityEmailListUrl, processActivityEmailUrl } from "../services/ConstantServies";
 import { authAxios, authAxiosFilePost, authAxiosget, authAxiosPatch, authAxiosPost, authAxiosPut } from "./HttpMethod";
 
 
@@ -74,4 +74,10 @@ export function getemployeeList() {
   return authAxios(profileDtlURL)
 }
 
+export function getActivityEmailList(data = {}) {
+  return authAxios(getActivityEmailListUrl, data);
+}
 
+export function processActivityEmail(data = {}) {
+  return authAxiosPost(processActivityEmailUrl, data);
+}

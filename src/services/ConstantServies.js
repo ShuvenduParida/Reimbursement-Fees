@@ -34,3 +34,7 @@ export const getDocumentTypeListUrl = `${hrendpoint}/get_document_type_list/${db
 export const getActivityDocumentListUrl = `${hrendpoint}/get_activity_document_list/${db_name}/`;
 
 export const processActivityDocument = `${hrendpoint}/process_activity_document/${db_name}/`;
+
+export const getActivityEmailListUrl = `${hrendpoint}/get_activity_email_list/${db_name}/`;
+
+export const processActivityEmailUrl  = `${hrendpoint}/process_activity_email/${db_name}/`;
