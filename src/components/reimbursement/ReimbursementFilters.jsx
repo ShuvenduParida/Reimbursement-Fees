@@ -1,6 +1,7 @@
 // src/components/reimbursement/ReimbursementFilters.jsx
-import styled from "styled-components";
-import { FiSearch, FiX } from "react-icons/fi";
+import { Children, isValidElement, useEffect, useMemo, useRef, useState } from "react";
+import styled, { keyframes } from "styled-components";
+import { FiSearch, FiX, FiChevronDown, FiCheck } from "react-icons/fi";
 
 const Wrap = styled.div`
   background: var(--rf-surface);
@@ -128,7 +129,39 @@ const SearchField = styled.div`
   }
 `;
 
-const Select = styled.select`
+// --- Animated dropdown (replaces the native <select> look/feel below) ---
+// Same visual sizing/border/focus styling the old <select> had; only the
+// options panel is new, and it animates open/closed instead of using the
+// browser's native (unstyleable) option list.
+const dropdownOpen = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+`;
+
+const dropdownClose = keyframes`
+  from {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.96);
+  }
+`;
+
+const SelectShell = styled.div`
+  position: relative;
+  width: 100%;
+  min-width: 0;
+`;
+
+const SelectInput = styled.input`
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -138,7 +171,6 @@ const Select = styled.select`
   height: 42px;
 
   box-sizing: border-box;
-
   padding: 0 34px 0 14px;
 
   border: 1px solid var(--rf-line-strong);
@@ -146,22 +178,26 @@ const Select = styled.select`
 
   background-color: var(--rf-surface);
 
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b6255' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-
-  background-repeat: no-repeat;
-  background-position: right 11px center;
-
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
 
   color: var(--rf-ink);
 
-  cursor: pointer;
+  cursor: text;
 
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &::placeholder {
+    color: var(--rf-ink);
+    opacity: 0.85;
+  }
 
   &:hover {
     border-color: var(--rf-brass);
@@ -173,6 +209,201 @@ const Select = styled.select`
     box-shadow: 0 0 0 3px var(--rf-brass-soft);
   }
 `;
+
+const SelectChevron = styled(FiChevronDown)`
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%) rotate(${(p) => (p.$open ? "180deg" : "0deg")});
+
+  flex-shrink: 0;
+  color: #6b6255;
+  pointer-events: none;
+  transition: transform 0.18s ease;
+`;
+
+const SelectEmpty = styled.div`
+  padding: 10px 10px;
+  font-size: 13px;
+  color: var(--rf-slate);
+`;
+
+const SelectMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+
+  max-height: 260px;
+  overflow-y: auto;
+
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-line-strong);
+  border-radius: var(--rf-radius-sm);
+  box-shadow: 0 10px 30px rgba(30, 22, 10, 0.14);
+
+  padding: 6px;
+
+  transform-origin: top center;
+  animation: ${(p) => (p.$closing ? dropdownClose : dropdownOpen)} 0.16s ease both;
+`;
+
+const SelectOption = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: ${(p) => (p.$active ? "var(--rf-brass-soft)" : "transparent")};
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: ${(p) => (p.$active ? 600 : 500)};
+  text-align: left;
+
+  color: ${(p) => (p.$active ? "var(--rf-brass-dark)" : "var(--rf-ink)")};
+
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover {
+    background: var(--rf-brass-soft);
+  }
+
+  svg {
+    flex-shrink: 0;
+    color: var(--rf-brass-dark);
+  }
+`;
+
+// Drop-in replacement for a native <select>: same `value` / `onChange(e)` /
+// <option> API (call sites still read `e.target.value`), so nothing outside
+// this component needs to change. The options panel animates open/closed
+// instead of being the browser's native, unstyleable list, and typing into
+// the field filters that list live (e.g. typing "atom" narrows it down to
+// customers whose name contains "atom").
+const AnimatedSelect = ({ value, onChange, children, "aria-label": ariaLabel }) => {
+  const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [query, setQuery] = useState("");
+  const shellRef = useRef(null);
+  const inputRef = useRef(null);
+  const closeTimer = useRef(null);
+
+  const options = useMemo(
+    () =>
+      Children.toArray(children)
+        .filter(isValidElement)
+        .map((child) => ({ value: child.props.value, label: child.props.children })),
+    [children]
+  );
+
+  const selected = options.find((opt) => opt.value === value) || options[0];
+
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => String(opt.label ?? "").toLowerCase().includes(q));
+  }, [options, query]);
+
+  const closeMenu = () => {
+    setOpen((isOpen) => {
+      if (!isOpen) return isOpen;
+      setClosing(true);
+      clearTimeout(closeTimer.current);
+      closeTimer.current = setTimeout(() => {
+        setOpen(false);
+        setClosing(false);
+        setQuery("");
+      }, 150);
+      return isOpen;
+    });
+  };
+
+  const openMenu = () => {
+    clearTimeout(closeTimer.current);
+    setClosing(false);
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleOutside = (e) => {
+      if (shellRef.current && !shellRef.current.contains(e.target)) closeMenu();
+    };
+    const handleKey = (e) => {
+      if (e.key === "Escape") {
+        closeMenu();
+        inputRef.current?.blur();
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  const handlePick = (val) => {
+    onChange({ target: { value: val } });
+    closeMenu();
+    inputRef.current?.blur();
+  };
+
+  return (
+    <SelectShell ref={shellRef}>
+      <SelectInput
+        ref={inputRef}
+        type="text"
+        role="combobox"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        autoComplete="off"
+        placeholder={selected?.label ?? ""}
+        value={open ? query : ""}
+        onFocus={openMenu}
+        onClick={openMenu}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!open) openMenu();
+        }}
+      />
+      <SelectChevron size={14} $open={open && !closing} />
+
+      {open && (
+        <SelectMenu role="listbox" $closing={closing}>
+          {filteredOptions.length === 0 ? (
+            <SelectEmpty>No matches found.</SelectEmpty>
+          ) : (
+            filteredOptions.map((opt) => (
+              <SelectOption
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={opt.value === value}
+                $active={opt.value === value}
+                onClick={() => handlePick(opt.value)}
+              >
+                <span>{opt.label}</span>
+                {opt.value === value && <FiCheck size={13} />}
+              </SelectOption>
+            ))
+          )}
+        </SelectMenu>
+      )}
+    </SelectShell>
+  );
+};
 
 const DateRange = styled.div`
   width: 100%;
@@ -331,28 +562,28 @@ const ReimbursementFilters = ({
           />
         </SearchField>
 
-        <Select value={filters.customer} onChange={(e) => onChange("customer", e.target.value)}>
+        <AnimatedSelect value={filters.customer} onChange={(e) => onChange("customer", e.target.value)}>
           <option value="">All customers</option>
           {customerOptions.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
-        </Select>
+        </AnimatedSelect>
 
-        <Select value={filters.status} onChange={(e) => onChange("status", e.target.value)}>
+        <AnimatedSelect value={filters.status} onChange={(e) => onChange("status", e.target.value)}>
           <option value="">All statuses</option>
           <option value="paid">Paid</option>
           <option value="not_paid">Not Paid</option>
-        </Select>
+        </AnimatedSelect>
 
-        <Select value={filters.overdue} onChange={(e) => onChange("overdue", e.target.value)}>
+        <AnimatedSelect value={filters.overdue} onChange={(e) => onChange("overdue", e.target.value)}>
           <option value="">Overdue: all</option>
           <option value="yes">Overdue only</option>
           <option value="no">Not overdue</option>
-        </Select>
+        </AnimatedSelect>
 
-        <Select
+        <AnimatedSelect
           value={filters.amountRange}
           onChange={(e) => onChange("amountRange", e.target.value)}
           aria-label="Amount Range"
@@ -362,7 +593,7 @@ const ReimbursementFilters = ({
               {opt.label}
             </option>
           ))}
-        </Select>
+        </AnimatedSelect>
 
         <DateRange>
           <DateField>

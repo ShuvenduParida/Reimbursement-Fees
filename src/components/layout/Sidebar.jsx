@@ -464,7 +464,7 @@ const Sidebar = ({
             {!collapsed && salesOpen && (
               <Submenu>
                 <Subitem
-                  href="/Sales/reimbursement-fees"
+                  href="/Reimbursement/reimbursement-fees"
                   $active={isReimbursementActive}
                 >
                   <FiFileText size={17} />

@@ -1236,7 +1236,7 @@ const AddReimbursement = () => {
       ...prev,
       productId: String(p.id),
       productLabel: getProductLabel(p),
-      price: prev.price || getProductPriceHint(p),
+      price: getProductPriceHint(p),
     }));
     setProductQuery("");
     setProductOpen(false);
