@@ -28,11 +28,14 @@ import { formatCurrency } from "../utils/reimbursementUtils";
 
    Stacking-context notes (important — read before touching z-index):
    - InvoiceCard and ItemsCard are both `position: relative` with an
-     explicit z-index (30 and 1). That means the Customer dropdown,
+     explicit z-index (2 and 1). That means the Customer dropdown,
      which lives inside InvoiceCard, always paints above the whole of
      ItemsCard — it does not matter that ItemsCard comes later in the
      DOM, because painting order for positioned elements is driven by
-     z-index, not source order.
+     z-index, not source order. These two values are kept as low as
+     possible (just 2 vs 1) so this page can never outrank
+     DashboardLayout's top nav — see the note above InvoiceCard's
+     definition.
    - Inside ItemsCard, ItemEntry (the Product/Qty/Price/Add-item row)
      is also `position: relative` with its own z-index (5), which is
      higher than the later, non-positioned siblings in the same card
@@ -153,9 +156,22 @@ const SectionCard = styled.div`
 `;
 
 /* Sits above ItemsCard so the Customer dropdown is never painted
-   underneath the Items section. */
+   underneath the Items section.
+
+   NOTE on the top-bar overlap bug: these used to be z-index: 30 and
+   z-index: 1. 30 is high enough to beat a lot of real-world sticky/
+   fixed header z-indexes, which is exactly what was letting this
+   card paint over DashboardLayout's top nav on scroll. Since
+   InvoiceCard and ItemsCard only ever need to out-rank each other
+   (and their own descendants), not anything outside this file, they
+   are dropped to the lowest values that still preserve that one
+   relationship. This was not verified against DashboardLayout's own
+   CSS — it was not available to inspect alongside this file — so if
+   the header still uses a fixed/sticky position with no z-index, or
+   with a z-index below 2, it should be raised there (a typical safe
+   value is 100+) rather than raising these again. */
 const InvoiceCard = styled(SectionCard)`
-  z-index: 30;
+  z-index: 2;
 `;
 
 const ItemsCard = styled(SectionCard)`
@@ -509,7 +525,7 @@ const ItemEntry = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 3fr) 120px 160px 145px;
   gap: 12px;
-  align-items: end;
+  align-items: start;
   padding: 14px;
   border: 1px dashed var(--rf-line-strong);
   border-radius: var(--rf-radius-sm);
@@ -538,6 +554,26 @@ const QtyField = styled(Field)`
 
 const PriceField = styled(Field)`
   min-width: 0;
+`;
+
+/* AddItemBtn has no visible <Label> above it, unlike the other three
+   fields in this row. Now that ItemEntry uses align-items: start (see
+   above), every field is top-aligned, so without this wrapper the
+   button would sit higher than the inputs. LabelSpacer reserves the
+   same height a Label would take so the button's top still lines up
+   with the Product/Quantity/Price inputs. */
+const AddItemFieldWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const LabelSpacer = styled.span`
+  visibility: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: normal;
 `;
 
 const AddItemBtn = styled.button`
@@ -771,9 +807,12 @@ const PrimaryBtn = styled.button`
 /* ==================================================================
    Confirmation modal — appears after successful validation, before
    the API call. Stacking level (z-index: 1000) is intentionally set
-   above every other positioned element in this file (InvoiceCard: 30,
+   above every other positioned element in this file (InvoiceCard: 2,
    ItemsCard: 1, ItemEntry: 5, Dropdown: 50) so it is never painted
-   underneath the customer/product dropdowns.
+   underneath the customer/product dropdowns. ModalOverlay is also
+   `position: fixed`, so it lives outside InvoiceCard/ItemsCard's
+   stacking contexts entirely and isn't affected by their z-index
+   values either way.
    ================================================================== */
 
 const fadeIn = keyframes`
@@ -1209,8 +1248,6 @@ const AddReimbursement = () => {
 
     if (!draft.productId) {
       nextErrors.draftProduct = "Select a product.";
-    } else if (items.some((it) => it.productId === draft.productId)) {
-      nextErrors.draftProduct = "This product is already in the list.";
     }
 
     const qty = Number(draft.quantity);
@@ -1498,15 +1535,11 @@ const AddReimbursement = () => {
                     ) : filteredProducts.length === 0 ? (
                       <DropdownState>No products found.</DropdownState>
                     ) : (
-                      filteredProducts.map((p) => {
-                        const already = items.some((it) => it.productId === String(p.id));
-                        return (
-                          <DropdownItem key={p.id} type="button" disabled={already} onClick={() => selectDraftProduct(p)}>
-                            <span>{getProductLabel(p)}</span>
-                            {already && <small>Already added</small>}
-                          </DropdownItem>
-                        );
-                      })
+                      filteredProducts.map((p) => (
+                        <DropdownItem key={p.id} type="button" onClick={() => selectDraftProduct(p)}>
+                          <span>{getProductLabel(p)}</span>
+                        </DropdownItem>
+                      ))
                     )}
                   </Dropdown>
                 )}
@@ -1556,10 +1589,13 @@ const AddReimbursement = () => {
                 {errors.draftPrice && <ErrorText>{errors.draftPrice}</ErrorText>}
               </PriceField>
 
-              <AddItemBtn type="button" onClick={handleAddItem} disabled={submitting}>
-                <FiPlus size={15} />
-                Add item
-              </AddItemBtn>
+              <AddItemFieldWrap>
+                <LabelSpacer aria-hidden="true">&nbsp;</LabelSpacer>
+                <AddItemBtn type="button" onClick={handleAddItem} disabled={submitting}>
+                  <FiPlus size={15} />
+                  Add item
+                </AddItemBtn>
+              </AddItemFieldWrap>
             </ItemEntry>
 
             {errors.items && <ErrorText>{errors.items}</ErrorText>}
