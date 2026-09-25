@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'url'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/docket/',
+  base: '/Reimbursement/',
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] }),

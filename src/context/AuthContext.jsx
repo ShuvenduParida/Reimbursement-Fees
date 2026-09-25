@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("dbName", db_name[1]);
         setCurrentUser(userData);
         toast.success("Login successful!");
-        window.location.href = "/docket/document-management";
+        window.location.href = "/Reimbursement/reimbursement-fees";
         return true;
       }
     } catch (error) {
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
       window.location.href = "/customer/login.html";
     }
     if(localStorage.getItem("seaUser")){
-      window.location.href = "/docket/user/login";
+      window.location.href = "/Reimbursement/login";
     }
     if(localStorage.getItem("seaUser_E")){
       window.location.href = "/docket/emp/login";

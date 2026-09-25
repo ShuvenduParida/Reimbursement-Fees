@@ -13,7 +13,7 @@ export const loginURL = `${localhost}/rest-auth/login/`;
 export const resetPasswordURL = `${endpoint}/reset_password/${db_name}/`;
 export const resetPasswordConfirmURL = `${endpoint}/reset_password_confirm/`;
 export const changePasswordURL = `${endpoint}/change_password/`;
-export const getCustomerListURL = `${hrendpoint}/customer_list/${db_name}/`;
+
 export const getCustomerDetailListURL = `${endpoint}/customer_detail_list/${db_name}/`;
 
 export const profileInfoURL = `${endpoint}/profile_info/${db_name}/`;
@@ -26,15 +26,10 @@ export const forgetPin = `${newhrendpoint}/emp_forget_pin/`;
 export const customerslogin = `${hrendpoint}/customer_user_login/`;
 
 
-export const getProcessActivityListUrl = `${hrendpoint}/get_process_activity_list/${db_name}/`;
 
 
-export const getProcessListUrl = `${hrendpoint}/get_process_list/${db_name}/`;
-export const getDocumentTypeListUrl = `${hrendpoint}/get_document_type_list/${db_name}/`;
-export const getActivityDocumentListUrl = `${hrendpoint}/get_activity_document_list/${db_name}/`;
 
-export const processActivityDocument = `${hrendpoint}/process_activity_document/${db_name}/`;
-
-export const getActivityEmailListUrl = `${hrendpoint}/get_activity_email_list/${db_name}/`;
-
-export const processActivityEmailUrl  = `${hrendpoint}/process_activity_email/${db_name}/`;
+export const getCustomerListURL = `${hrendpoint}/customer_list/${db_name}/`;
+export const getReimbursementOrderListURL = `${hrendpoint}/reimbursement_order_list/${db_name}/`
+export const getProductListURL = `${hrendpoint}/products/${db_name}/`
+export const ProcessReimbursementOrder = `${hrendpoint}/reimbursement_order/create/${db_name}/`

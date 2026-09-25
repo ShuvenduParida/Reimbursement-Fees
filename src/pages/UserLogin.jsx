@@ -12,27 +12,32 @@ import { toast } from "react-toastify";
 
 // ─── Theme ─────────────────────────────────────────────────────────────────────
 const T = {
-  // Page bg: light corporate blue-gray
-  pageBg:    "#F2F5FC",
-  pageBg2:   "#E7ECFB",
+  // Page background
+  pageBg:    "#F4F7FB",
+  pageBg2:   "#EAF0F8",
 
-  // Left panel: deep indigo / blue enterprise gradient
-  panelFrom: "#111C42",
-  panelMid:  "#1B2C6B",
-  panelTo:   "#2A3FA6",
+  // Left panel
+  panelFrom: "#0F172A",   // Deep navy
+  panelMid:  "#1E3A8A",   // Royal blue
+  panelTo:   "#2563EB",   // Bright blue
 
-  accent:    "#7C93FF",
-  accent2:   "#B7C4FF",
+  // Accent
+  accent:    "#60A5FA",
+  accent2:   "#BFDBFE",
+
+  // General
   white:     "#FFFFFF",
-
   formBg:    "#FFFFFF",
-  text:      "#101828",
-  muted:     "#667085",
-  border:    "#E1E6F0",
-  inputBg:   "#F7F9FC",
+  text:      "#0F172A",
+  muted:     "#64748B",
+  border:    "#DCE3EE",
 
-  btn:       "#3457E0",
-  btnHover:  "#2340C2",
+  // Inputs
+  inputBg:   "#F8FAFC",
+
+  // Button
+  btn:       "#2563EB",
+  btnHover:  "#1D4ED8",
 };
 
 // ─── Keyframes ─────────────────────────────────────────────────────────────────
@@ -370,21 +375,6 @@ const StyledInput = styled.input`
   &:hover:not(:focus) { border-color: rgba(52,87,224,0.38); }
 `;
 
-const ForgotRow = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -6px;
-  margin-bottom: 24px;
-`;
-const ForgotLink = styled.a`
-  font-size: 11.5px;
-  font-weight: 700;
-  color: ${T.btn};
-  text-decoration: none;
-  cursor: pointer;
-  transition: color 0.2s;
-  &:hover { color: ${T.btnHover}; }
-`;
 
 const SignInBtn = styled.button`
   width: 100%;
@@ -420,10 +410,10 @@ const FormFooter = styled.p`
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 const MODULES = [
-  { icon: <FiFileText  />, title: "Docket Activity Update",  desc: "Edit Activity Details"    },
-  { icon: <FiRefreshCw />, title: "Activity Document upoad",  desc: "Add, Edit and Delete Document from Activity"         },
-  { icon: <FiShield    />, title: "Email Template",        desc: "Add or Modify Email template"     },
-  { icon: <FiLayers    />, title: "Automate Email Template",      desc: "Automate Email sending"       },
+  { icon: <FiFileText  />, title: "Sales Reinbursement Fees",  desc: "Manage Reinbursment Fees"    },
+  // { icon: <FiRefreshCw />, title: "Activity Document upoad",  desc: "Add, Edit and Delete Document from Activity"         },
+  // { icon: <FiShield    />, title: "Email Template",        desc: "Add or Modify Email template"     },
+  // { icon: <FiLayers    />, title: "Automate Email Template",      desc: "Automate Email sending"       },
 ];
 
 // ─── Reusable input field ──────────────────────────────────────────────────────
@@ -506,20 +496,20 @@ export default function UserLogin() {
             <LogoRow>
               <LogoBadge><FiFileText /></LogoBadge>
               <div>
-                <LogoName>Doccket</LogoName>
-                <LogoSub>Enterprise Doccket Management Platform</LogoSub>
+                <LogoName>Sales</LogoName>
+                {/* <LogoSub>Enterprise Doccket Management Platform</LogoSub> */}
               </div>
             </LogoRow>
 
             <Headline>
-              Manage Docket,<br />
+              Manage Sales,<br />
               <em>Securely Organized</em>
             </Headline>
 
-            <Sub>
+            {/* <Sub>
               Centralize business documents, automate workflows, and collaborate securely
               from a single platform.
-            </Sub>
+            </Sub> */}
 
             <ModulesLabel>Platform Capabilities</ModulesLabel>
 
@@ -535,10 +525,10 @@ export default function UserLogin() {
               ))}
             </ModulesGrid>
 
-            <LeftFooter>
+            {/* <LeftFooter>
               <FiShield />
               <span>Enterprise-grade security & compliance</span>
-            </LeftFooter>
+            </LeftFooter> */}
           </Left>
 
           {/* ══ RIGHT ══ */}
@@ -586,7 +576,6 @@ export default function UserLogin() {
               Login <FiArrowRight />
             </SignInBtn>
 
-            {/* <FormFooter>© DocuHub Document Management. All rights reserved.</FormFooter> */}
           </Right>
         </Card>
       </Page>

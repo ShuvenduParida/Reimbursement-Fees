@@ -1,32 +1,8 @@
-import { setuserpin, getCompany, forgetPin, profileDtlURL,getProcessListUrl , getDocumentTypeListUrl, getProcessActivityListUrl, getActivityDocumentListUrl, processActivityDocument, getActivityEmailListUrl, processActivityEmailUrl } from "../services/ConstantServies";
+import { setuserpin, getCompany, forgetPin, profileDtlURL,getCustomerListURL,getReimbursementOrderListURL,getProductListURL,ProcessReimbursementOrder } from "../services/ConstantServies";
 import { authAxios, authAxiosFilePost, authAxiosget, authAxiosPatch, authAxiosPost, authAxiosPut } from "./HttpMethod";
 
 
 
-// Document Management APIs
-
-export function getProcessList(data = {}) {
-  return authAxios(getProcessListUrl, data);
-}
-
-export function getDocumentTypeList(data = {}) {
-  return authAxios(getDocumentTypeListUrl, data);
-}
-
-export function getActivityDocumentList(data = {}) {
-  return authAxios(getActivityDocumentListUrl, data);
-}
-
-export function addActivityDocument(data = {}) {
-  return authAxiosPost(processActivityDocument, data);
-}
-
-export function updateActivityDocument(data = {}) {
-    return authAxiosPost(processActivityDocument, data);
-}
-export function getProcessActivityList(data) {
-  return authAxios(getProcessActivityListUrl, data);
-} 
 
 export function getCompanyName(isFms) {
   let data = {
@@ -46,9 +22,7 @@ export function getCustomerDetailList(customerId) {
   return authAxios(getCustomerDetailListURL, data);
 }
 
-export function getCustomerListView(params) {
-  return authAxios(getCustomerListURL, params)
-}
+
 
 export async function setuserpinview(o_pin, n_pin) {
   try {
@@ -74,10 +48,20 @@ export function getemployeeList() {
   return authAxios(profileDtlURL)
 }
 
-export function getActivityEmailList(data = {}) {
-  return authAxios(getActivityEmailListUrl, data);
+// R. Fees
+
+export function getCustomerListView(params) {
+  return authAxios(getCustomerListURL, params)
 }
 
-export function processActivityEmail(data = {}) {
-  return authAxiosPost(processActivityEmailUrl, data);
+export function getReimbursementOrderList(data = {}) {
+  return authAxios(getReimbursementOrderListURL, data);
+}
+
+export function getProductList(data = {}) {
+  return authAxios(getProductListURL, data);
+}
+
+export function createReimbursementOrder(data = {}) {
+  return authAxiosPost(ProcessReimbursementOrder, data);
 }
