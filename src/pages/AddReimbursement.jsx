@@ -1209,8 +1209,13 @@ const AddReimbursement = () => {
 
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => getProductLabel(p).toLowerCase().includes(q));
+
+    const govtFeeProducts = products.filter(
+      (p) => String(p?.category || "").trim().toUpperCase() === "GOVT FEE"
+    );
+
+    if (!q) return govtFeeProducts;
+    return govtFeeProducts.filter((p) => getProductLabel(p).toLowerCase().includes(q));
   }, [products, productQuery]);
 
   const selectCustomer = (c) => {
@@ -1617,8 +1622,8 @@ const AddReimbursement = () => {
                       <tr key={it.key}>
                         <td>{it.productLabel}</td>
                         <td className="rf-num">{it.quantity}</td>
-                        <td className="rf-num">{formatCurrency(it.price)}</td>
-                        <td className="rf-num">{formatCurrency(it.quantity * it.price)}</td>
+                        <td className="rf-num">₹{formatCurrency(it.price)}</td>
+                        <td className="rf-num">₹{formatCurrency(it.quantity * it.price)}</td>
                         <td className="rf-actions">
                           <RemoveBtn
                             type="button"
@@ -1639,7 +1644,7 @@ const AddReimbursement = () => {
             <ActionBar>
               <TotalBlock>
                 <TotalLabel>Total Amount</TotalLabel>
-                <TotalValue>{formatCurrency(totalAmount)}</TotalValue>
+                <TotalValue>₹{formatCurrency(totalAmount)}</TotalValue>
               </TotalBlock>
               <FootActions>
                 <SecondaryBtn type="button" onClick={goBack} disabled={submitting}>
@@ -1713,8 +1718,8 @@ const AddReimbursement = () => {
                         <tr key={it.key}>
                           <td>{it.productLabel}</td>
                           <td className="rf-num">{it.quantity}</td>
-                          <td className="rf-num">{formatCurrency(it.price)}</td>
-                          <td className="rf-num">{formatCurrency(Number(it.quantity) * Number(it.price))}</td>
+                          <td className="rf-num">₹{formatCurrency(it.price)}</td>
+                          <td className="rf-num">₹{formatCurrency(Number(it.quantity) * Number(it.price))}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1723,7 +1728,7 @@ const AddReimbursement = () => {
 
                 <ModalTotalRow>
                   <ModalTotalLabel>Total</ModalTotalLabel>
-                  <ModalTotalValue>{formatCurrency(totalAmount)}</ModalTotalValue>
+                  <ModalTotalValue>₹{formatCurrency(totalAmount)}</ModalTotalValue>
                 </ModalTotalRow>
               </div>
             </ModalBody>

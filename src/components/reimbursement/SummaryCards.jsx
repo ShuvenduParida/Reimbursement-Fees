@@ -1,6 +1,7 @@
 // src/components/reimbursement/SummaryCards.jsx
 import styled from "styled-components";
 import { FiFileText, FiCheckCircle, FiClock, FiAlertTriangle, FiDollarSign } from "react-icons/fi";
+import { FaRupeeSign } from "react-icons/fa";
 import { getSummary, getPendingOutstandingGrouped, formatGroupedAmount } from "../../utils/reimbursementUtils";
 
 const Wrap = styled.div`
@@ -188,7 +189,7 @@ const SummaryCards = ({ records }) => {
     <Wrap>
       <OutstandingBanner>
         <OutstandingIcon>
-          <FiDollarSign size={20} />
+          <FaRupeeSign size={20}/>
         </OutstandingIcon>
         <OutstandingBody>
           <OutstandingLabel>Total Outstanding Fees</OutstandingLabel>

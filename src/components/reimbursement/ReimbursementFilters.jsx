@@ -325,7 +325,7 @@ const ReimbursementFilters = ({
           <FiSearch size={15} />
           <input
             type="text"
-            placeholder="Search customer or invoice number"
+            placeholder="Search customer or inv number"
             value={filters.search}
             onChange={(e) => onChange("search", e.target.value)}
           />
@@ -347,7 +347,7 @@ const ReimbursementFilters = ({
         </Select>
 
         <Select value={filters.overdue} onChange={(e) => onChange("overdue", e.target.value)}>
-          <option value="">Overdue: any</option>
+          <option value="">Overdue: all</option>
           <option value="yes">Overdue only</option>
           <option value="no">Not overdue</option>
         </Select>
