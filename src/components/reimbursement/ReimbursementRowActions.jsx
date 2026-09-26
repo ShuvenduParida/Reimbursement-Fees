@@ -34,7 +34,7 @@ const ActionBtn = styled.button`
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease,transform 0.15s ease;
 
   &:hover:not(:disabled) {
     background: ${({ $variant }) => variantStyles[$variant].bgHover};
@@ -62,7 +62,7 @@ const ReimbursementRowActions = ({ record, onView }) => (
       <FiEye size={13} />
       View
     </ActionBtn>
-    <ActionBtn type="button" $variant="update" disabled aria-label="Update (coming soon)" title="Coming soon">
+    {/* <ActionBtn type="button" $variant="update" disabled aria-label="Update (coming soon)" title="Coming soon">
       <FiEdit3 size={13} />
       Update
     </ActionBtn>
@@ -73,7 +73,7 @@ const ReimbursementRowActions = ({ record, onView }) => (
     <ActionBtn type="button" $variant="pdf" disabled aria-label="Generate PDF (coming soon)" title="Coming soon">
       <FiFileText size={13} />
       PDF
-    </ActionBtn>
+    </ActionBtn> */}
   </Actions>
 );
 
