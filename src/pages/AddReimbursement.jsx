@@ -1845,9 +1845,10 @@ const AddReimbursement = () => {
               <Textarea
                 id="rf-add-additional-remarks"
                 rows={3}
-                placeholder="Optional remarks for this reimbursement"
+                placeholder="Maximum 250 characters"
                 value={additionalRemarks}
                 onChange={(e) => setAdditionalRemarks(e.target.value)}
+                maxLength={250}
                 disabled={submitting}
               />
             </Field>
@@ -1965,9 +1966,10 @@ const AddReimbursement = () => {
                 <Input
                   id="rf-add-remark"
                   type="text"
-                  placeholder="Optional"
+                  placeholder="Maximum 100 characters"
                   value={draft.remark}
                   onChange={(e) => setDraft((d) => ({ ...d, remark: e.target.value }))}
+                  maxLength={100}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -2051,9 +2053,10 @@ const AddReimbursement = () => {
                             <td>
                               <CellInput
                                 type="text"
-                                placeholder="Optional"
+                                placeholder="Maximum 100 character"
                                 value={editDraft.remark}
                                 onChange={(e) => setEditDraft((d) => ({ ...d, remark: e.target.value }))}
+                                maxLength={100}
                                 onKeyDown={handleEditKeyDown}
                                 disabled={submitting}
                                 autoComplete="off"
