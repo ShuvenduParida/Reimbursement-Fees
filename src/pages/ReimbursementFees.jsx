@@ -475,7 +475,10 @@ const ReimbursementFees = () => {
           </StateCard>
         ) : (
           <>
-            <SummaryCards records={records} />
+            {/* Summary reflects ALL records matching the current filters (not just
+                the current page), so it uses filteredRecords, never
+                paginatedRecords. */}
+            <SummaryCards records={filteredRecords} />
 
             {/* <div className="rf-page__dashboards">
               <AgingDashboard records={records} />
@@ -493,7 +496,12 @@ const ReimbursementFees = () => {
               totalCount={records.length}
             />
 
-            <ReimbursementTable records={paginatedRecords} onView={setSelectedRecord} pagination={pagination} />
+            <ReimbursementTable
+              records={paginatedRecords}
+              onView={setSelectedRecord}
+              onCustomerSelect={(customerName) => updateFilter("customer", customerName)}
+              pagination={pagination}
+            />
 
             <ExportSection>
               <ExportText>

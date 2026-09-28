@@ -100,6 +100,18 @@ const StatusHeadCell = styled.th`
   padding-left: 20px;
 `;
 
+// Rows are clickable to filter by customer. Hover background is already
+// handled by `tbody tr:hover td` in Table; this only adds the pointer and a
+// keyboard focus ring.
+const ClickableRow = styled.tr`
+  ${({ $clickable }) => $clickable && "cursor: pointer;"}
+
+  &:focus-visible {
+    outline: 2px solid var(--rf-brass);
+    outline-offset: -2px;
+  }
+`;
+
 const ActionsCell = styled.td`
   text-align: left;
   white-space: nowrap;
@@ -203,7 +215,11 @@ function getPageNumbers(current, total) {
   return [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
 }
 
-const ReimbursementTable = ({ records, onView, pagination }) => {
+const ReimbursementTable = ({ records, onView, onCustomerSelect, pagination }) => {
+  const selectCustomer = (name) => {
+    if (onCustomerSelect && name) onCustomerSelect(name);
+  };
+
   const totalCount = pagination ? pagination.totalCount : records.length;
 
   if (totalCount === 0) {
@@ -241,7 +257,21 @@ const ReimbursementTable = ({ records, onView, pagination }) => {
               const overdue = isOverdueRecord(r);
               const paid = isPaid(r);
               return (
-                <tr key={r.id}>
+                <ClickableRow
+                  key={r.id}
+                  $clickable={Boolean(onCustomerSelect && r.customer_name)}
+                  onClick={() => selectCustomer(r.customer_name)}
+                  onKeyDown={(e) => {
+                    // Ignore keys pressed on inner controls (e.g. the View button).
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      selectCustomer(r.customer_name);
+                    }
+                  }}
+                  tabIndex={onCustomerSelect && r.customer_name ? 0 : undefined}
+                  title={onCustomerSelect && r.customer_name ? `Filter by ${r.customer_name}` : undefined}
+                >
                   <td>{safeText(r.customer_name)}</td>
                   <IdTd>{safeText(r.invoice_number)}</IdTd>
                   <td>{formatApiDate(r.invoice_date)}</td>
@@ -250,10 +280,12 @@ const ReimbursementTable = ({ records, onView, pagination }) => {
                   <StatusTd>
                     <StatusBadge paid={paid} overdue={overdue} />
                   </StatusTd>
-                  <ActionsCell>
+                  {/* Stop propagation so clicking View never triggers the row's
+                      customer filter. */}
+                  <ActionsCell onClick={(e) => e.stopPropagation()}>
                     <ReimbursementRowActions record={r} onView={() => onView(r)} />
                   </ActionsCell>
-                </tr>
+                </ClickableRow>
               );
             })}
           </tbody>

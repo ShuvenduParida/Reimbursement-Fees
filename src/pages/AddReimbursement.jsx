@@ -262,6 +262,19 @@ const ErrorText = styled.span`
   color: var(--rf-rust);
 `;
 
+const WarningText = styled.span`
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #8a5622;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+`;
+
 const inputBorder = ({ $hasError }) => ($hasError ? "var(--rf-rust)" : "var(--rf-line)");
 
 const CONTROL_HEIGHT = "50px";
@@ -1278,30 +1291,34 @@ function todayISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/* Earliest selectable reimbursement date: exactly one year before
-   today, calculated dynamically. If today is Feb 29, the day is
-   clamped to the last day of Feb in the previous year. */
-function oneYearAgoISO() {
+/* Local calendar date N days before today, as YYYY-MM-DD. Uses
+   setDate (calendar arithmetic) rather than millisecond math, so DST and
+   timezone offsets can never shift the result by a day. */
+function daysAgoISO(days) {
   const d = new Date();
-  const month = d.getMonth();
-  const day = d.getDate();
-  d.setDate(1);
-  d.setFullYear(d.getFullYear() - 1);
-  const lastDay = new Date(d.getFullYear(), month + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDay));
-
+  d.setDate(d.getDate() - days);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/* ISO (YYYY-MM-DD) strings compare correctly as plain strings. */
+/* HARD error: only empty or future dates. Any past date is valid.
+   ISO (YYYY-MM-DD) strings compare correctly as plain strings. */
 function getInvoiceDateError(iso) {
   if (!iso) return "Select a reimbursement date.";
   if (iso > todayISO()) return "Reimbursement date cannot be in the future.";
-  if (iso < oneYearAgoISO()) return "Reimbursement date cannot be more than 1 year old.";
   return undefined;
+}
+
+/* SOFT warning only (never blocks submission): a valid date more than
+   5 calendar days before today. E.g. today 28-Sep -> 23-Sep is fine,
+   22-Sep warns. */
+const OLD_DATE_WARNING = "You are selecting a date from more than 5 days ago. Please choose carefully.";
+
+function getInvoiceDateWarning(iso) {
+  if (!iso || getInvoiceDateError(iso)) return "";
+  return iso < daysAgoISO(5) ? OLD_DATE_WARNING : "";
 }
 
 function isoToDDMMYYYY(iso) {
@@ -1692,6 +1709,12 @@ const AddReimbursement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmModalOpen, submitting]);
 
+  // Derived from invoiceDate on every render, so it is always in sync with
+  // the selected date (including at submit time) and needs no extra state.
+  // It is a warning only and is never part of `errors`, so it cannot block
+  // submission.
+  const invoiceDateWarning = getInvoiceDateWarning(invoiceDate);
+
   return (
     <DashboardLayout
       activeNav="reimbursement-fees"
@@ -1796,7 +1819,6 @@ const AddReimbursement = () => {
                     id="rf-add-invoice-date"
                     type="date"
                     value={invoiceDate}
-                    min={oneYearAgoISO()}
                     max={todayISO()}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -1809,6 +1831,12 @@ const AddReimbursement = () => {
                   />
                 </DateInputWrap>
                 {errors.invoiceDate && <ErrorText>{errors.invoiceDate}</ErrorText>}
+                {!errors.invoiceDate && invoiceDateWarning && (
+                  <WarningText role="status">
+                    <FiAlertCircle size={12} />
+                    <span>{invoiceDateWarning}</span>
+                  </WarningText>
+                )}
               </Field>
             </FieldsGrid>
 

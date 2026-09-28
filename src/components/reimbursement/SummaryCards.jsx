@@ -141,7 +141,7 @@ const Detail = styled.div`
 // intentionally not rendered on the page yet — bring them back later by
 // re-adding <AgingDashboard /> / <AmountDistribution /> on the page and
 // restoring the extra card entries here.
-const SummaryCards = ({ records }) => {
+const SummaryCards = ({ records = [] }) => {
   const summary = getSummary(records);
 
   // Only records whose invoice_status marks them as not-paid are counted —
@@ -155,7 +155,7 @@ const SummaryCards = ({ records }) => {
       key: "totalInvoices",
       label: "Total Reimbursement",
       figure: summary.totalInvoices,
-      detail: "All reimbursement invoices",
+      detail: "Invoices in current view",
       icon: FiFileText,
       tone: "ink",
     },
@@ -194,7 +194,7 @@ const SummaryCards = ({ records }) => {
         <OutstandingBody>
           <OutstandingLabel>Total Outstanding Fees</OutstandingLabel>
           <OutstandingFigure>{outstandingLabel}</OutstandingFigure>
-          <OutstandingNote>Sum of pending amounts across all not-paid invoices</OutstandingNote>
+          <OutstandingNote>Sum of pending amounts across not-paid invoices in the current view</OutstandingNote>
         </OutstandingBody>
       </OutstandingBanner>
 

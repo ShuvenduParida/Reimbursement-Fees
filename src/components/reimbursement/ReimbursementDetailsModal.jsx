@@ -1,9 +1,7 @@
 // src/components/reimbursement/ReimbursementDetailsModal.jsx
-import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { FiX, FiFileText } from "react-icons/fi";
 import StatusBadge from "./StatusBadge";
-import { getCustomerListView } from "../../services/productServices";
 import {
   formatCurrency,
   formatApiDate,
@@ -14,6 +12,27 @@ import {
   isOverdueRecord,
   safeText,
 } from "../../utils/reimbursementUtils";
+
+// ---------------------------------------------------------------------
+// Remark field names — change ONLY these two constants if the backend
+// names differ. Everything else below reads through the helpers.
+//   ITEM_REMARK_FIELD       -> key on each entry of record.order_items
+//   ADDITIONAL_REMARK_FIELD -> key on the reimbursement record itself
+// ---------------------------------------------------------------------
+const ITEM_REMARK_FIELD = "remark";
+const ADDITIONAL_REMARK_FIELD = "add_remarks";
+
+const getItemRemark = (item) => item?.[ITEM_REMARK_FIELD] ?? "";
+const getAdditionalRemark = (record) => record?.[ADDITIONAL_REMARK_FIELD] ?? "";
+
+// null / undefined / empty / whitespace-only / non-text values -> "—".
+// Never renders "undefined", "null" or "[object Object]".
+const displayRemark = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value !== "string") return "—";
+  const text = value.trim();
+  return text || "—";
+};
 
 // Modal shell mirrors AddReimbursementModal.jsx so the module keeps one
 // modal convention; this file adds the wider card, the detail-grid and the
@@ -30,7 +49,7 @@ const Overlay = styled.div`
 
 const ModalCard = styled.div`
   width: 100%;
-  max-width: 640px;
+  max-width: 720px;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
@@ -118,6 +137,18 @@ const FieldValue = styled.span`
   ${({ $outstanding }) => $outstanding && `color: var(--rf-rust); font-weight: 700;`}
 `;
 
+const RemarkBox = styled.div`
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rf-ink);
+  padding: 10px 12px;
+  background: var(--rf-paper);
+  border: 1px solid var(--rf-line);
+  border-radius: var(--rf-radius-sm);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+`;
+
 const ItemsTitle = styled.h4`
   display: flex;
   align-items: center;
@@ -162,7 +193,7 @@ const ItemsTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 12.5px;
-  min-width: 480px;
+  min-width: 620px;
 
   thead th {
     position: sticky;
@@ -189,6 +220,13 @@ const ItemsTable = styled.table`
 
   tbody td.rf-num {
     text-align: right;
+  }
+
+  tbody td.rf-remark {
+    min-width: 140px;
+    max-width: 240px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
 
   tbody tr:last-child td {
@@ -223,55 +261,6 @@ const SecondaryBtn = styled.button`
 
 // Reuses the same overlay/card convention as AddReimbursementModal.jsx.
 const ReimbursementDetailsModal = ({ record, onClose }) => {
-  // The reimbursement API doesn't carry a customer id or phone number —
-  // only customer_name. The customer list API is the existing source for
-  // mobile_number, so it's fetched once per modal open and matched by name.
-  const [customerList, setCustomerList] = useState([]);
-  const [customerLoading, setCustomerLoading] = useState(false);
-  const [customerError, setCustomerError] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadCustomers = async () => {
-      setCustomerLoading(true);
-      setCustomerError(null);
-      try {
-        const res = await getCustomerListView();
-        const data = Array.isArray(res?.data) ? res.data : [];
-        if (!cancelled) setCustomerList(data);
-      } catch (err) {
-        console.error("Failed to fetch customer list:", err);
-        if (!cancelled) {
-          setCustomerError(
-            err?.response?.data?.detail || err?.message || "Could not load customer phone number."
-          );
-          setCustomerList([]);
-        }
-      } finally {
-        if (!cancelled) setCustomerLoading(false);
-      }
-    };
-
-    loadCustomers();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Case-insensitive, whitespace-trimmed match on name, since that's the
-  // only field the two APIs share (record.customer_name <-> customer.name).
-  const customerPhone = useMemo(() => {
-    if (!record) return null;
-    const targetName = String(record.customer_name || "").trim().toLowerCase();
-    if (!targetName) return null;
-    const match = customerList.find(
-      (c) => String(c?.name || "").trim().toLowerCase() === targetName
-    );
-    return match?.mobile_number || null;
-  }, [record, customerList]);
-
   if (!record) return null;
 
   const symbol = getCurrencySymbol(record);
@@ -297,13 +286,6 @@ const ReimbursementDetailsModal = ({ record, onClose }) => {
               <FieldLabel>Customer</FieldLabel>
               <FieldValue>{safeText(record.customer_name)}</FieldValue>
             </Field>
-            {/* <Field>
-              <FieldLabel>Phone Number</FieldLabel>
-              <FieldValue title={customerError || undefined}>
-                {customerLoading ? "Loading…" : customerPhone ? `+91 ${customerPhone}`:"-"}
-              </FieldValue>
-            </Field> */}
-            
             <Field>
               <FieldLabel>Reimbursement date</FieldLabel>
               <FieldValue>{formatApiDate(record.invoice_date)}</FieldValue>
@@ -313,6 +295,11 @@ const ReimbursementDetailsModal = ({ record, onClose }) => {
               <FieldValue>{formatApiDate(record.invoice_due_date)}</FieldValue>
             </Field>
           </Grid>
+
+          <Field>
+            <FieldLabel>Additional Remarks</FieldLabel>
+            <RemarkBox>{displayRemark(getAdditionalRemark(record))}</RemarkBox>
+          </Field>
 
           <div>
             <ItemsTitle>
@@ -329,6 +316,7 @@ const ReimbursementDetailsModal = ({ record, onClose }) => {
                       <th>Product</th>
                       <th className="rf-num">Quantity</th>
                       <th className="rf-num">Price</th>
+                      <th>Remark</th>
                       <th className="rf-num">Amount</th>
                     </tr>
                   </thead>
@@ -342,6 +330,7 @@ const ReimbursementDetailsModal = ({ record, onClose }) => {
                             ? formatCurrency(item.price, symbol)
                             : "—"}
                         </td>
+                        <td className="rf-remark">{displayRemark(getItemRemark(item))}</td>
                         <td className="rf-num">
                           {item.final_price !== undefined && item.final_price !== null
                             ? formatCurrency(item.final_price, symbol)
