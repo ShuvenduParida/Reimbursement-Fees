@@ -8,6 +8,7 @@ import {
   FiX,
   FiPlus,
   FiTrash2,
+  FiEdit2,
   FiLoader,
   FiAlertCircle,
   FiUser,
@@ -36,7 +37,7 @@ import { formatCurrency } from "../utils/reimbursementUtils";
      possible (just 2 vs 1) so this page can never outrank
      DashboardLayout's top nav — see the note above InvoiceCard's
      definition.
-   - Inside ItemsCard, ItemEntry (the Product/Qty/Price/Add-item row)
+   - Inside ItemsCard, ItemEntry (the Product/Qty/Price/Remark/Add-item row)
      is also `position: relative` with its own z-index (5), which is
      higher than the later, non-positioned siblings in the same card
      (ItemsWrap, ActionBar). That keeps the Product dropdown above the
@@ -292,6 +293,35 @@ const Input = styled.input`
   }
 `;
 
+const Textarea = styled.textarea`
+  width: 100%;
+  min-height: 84px;
+  padding: 12px 13px;
+  border: 1px solid var(--rf-line);
+  border-radius: var(--rf-radius-sm);
+  background: var(--rf-surface);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--rf-ink);
+  outline: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--rf-brass);
+    box-shadow: 0 0 0 1px var(--rf-brass);
+  }
+
+  &:disabled {
+    background: var(--rf-paper);
+    color: var(--rf-slate-light);
+  }
+`;
+
 /* Single source of focus styling for these compound fields: the
    OUTER wrapper reacts to :focus-within with a border-color change
    plus a 1px box-shadow that hugs the same edge (not an offset ring,
@@ -523,7 +553,7 @@ const ItemEntry = styled.div`
   position: relative;
   z-index: 5;
   display: grid;
-  grid-template-columns: minmax(0, 3fr) 120px 160px 145px;
+  grid-template-columns: minmax(0, 2.4fr) 100px 150px minmax(0, 1.6fr) 130px;
   gap: 12px;
   align-items: start;
   padding: 14px;
@@ -531,7 +561,7 @@ const ItemEntry = styled.div`
   border-radius: var(--rf-radius-sm);
   background: var(--rf-paper);
 
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -543,7 +573,7 @@ const ItemEntry = styled.div`
 const ProductField = styled(Field)`
   min-width: 0;
 
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     grid-column: 1 / -1;
   }
 `;
@@ -554,6 +584,14 @@ const QtyField = styled(Field)`
 
 const PriceField = styled(Field)`
   min-width: 0;
+`;
+
+const RemarkField = styled(Field)`
+  min-width: 0;
+
+  @media (max-width: 1000px) {
+    grid-column: 1 / -1;
+  }
 `;
 
 /* AddItemBtn has no visible <Label> above it, unlike the other three
@@ -567,6 +605,16 @@ const AddItemFieldWrap = styled.div`
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+
+  /* When the row wraps, the button sits on its own line, so the
+     label-height spacer is no longer needed. */
+  @media (max-width: 1000px) {
+    grid-column: 1 / -1;
+
+    & > span {
+      display: none;
+    }
+  }
 `;
 
 const LabelSpacer = styled.span`
@@ -622,7 +670,7 @@ const ItemsTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 13.5px;
-  min-width: 520px;
+  min-width: 880px;
 
   thead th {
     position: sticky;
@@ -643,8 +691,21 @@ const ItemsTable = styled.table`
     text-align: right;
   }
 
+  thead th.rf-col-qty {
+    width: 120px;
+  }
+
+  thead th.rf-col-price {
+    width: 150px;
+  }
+
+  thead th.rf-col-remark {
+    min-width: 200px;
+  }
+
   thead th.rf-actions {
-    width: 48px;
+    width: 150px;
+    text-align: center;
   }
 
   tbody td {
@@ -673,6 +734,14 @@ const ItemsTable = styled.table`
   tbody tr:hover {
     background: var(--rf-paper);
   }
+
+  tbody tr.rf-editing {
+    background: var(--rf-paper);
+  }
+
+  tbody tr.rf-editing td {
+    vertical-align: top;
+  }
 `;
 
 const RemoveBtn = styled.button`
@@ -694,6 +763,131 @@ const RemoveBtn = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+const EditBtn = styled(RemoveBtn)`
+  color: var(--rf-brass-dark);
+
+  &:hover:not(:disabled) {
+    background: var(--rf-brass-soft);
+    border-color: var(--rf-brass);
+  }
+`;
+
+const ActionGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+`;
+
+/* Read-only cell content inside an editing row: same height as the
+   inline inputs so the row stays visually aligned. */
+const CellStatic = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: ${({ $right }) => ($right ? "flex-end" : "flex-start")};
+  min-height: 38px;
+`;
+
+const CellInput = styled.input`
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid ${inputBorder};
+  border-radius: var(--rf-radius-sm);
+  background: var(--rf-surface);
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--rf-ink);
+  text-align: ${({ $right }) => ($right ? "right" : "left")};
+  outline: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--rf-brass);
+    box-shadow: 0 0 0 1px var(--rf-brass);
+  }
+
+  &:disabled {
+    background: var(--rf-paper);
+    color: var(--rf-slate-light);
+  }
+`;
+
+const CellError = styled(ErrorText)`
+  display: block;
+  margin-top: 4px;
+  text-align: left;
+  line-height: 1.4;
+`;
+
+const InlineSaveBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: var(--rf-radius-sm);
+  border: 1px solid transparent;
+  background: var(--rf-brass);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--rf-brass-dark);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const InlineCancelBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: var(--rf-radius-sm);
+  border: 1px solid var(--rf-line);
+  background: var(--rf-surface);
+  color: var(--rf-ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--rf-paper);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const RemarkText = styled.span`
+  display: inline-block;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+`;
+
+const EmptyDash = styled.span`
+  color: var(--rf-slate-light);
 `;
 
 /* Compact footer: total on the left, buttons on the right, one row. */
@@ -839,7 +1033,7 @@ const ModalOverlay = styled.div`
 
 const Modal = styled.div`
   width: calc(100% - 32px);
-  max-width: 720px;
+  max-width: 800px;
   max-height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
@@ -962,6 +1156,15 @@ const ModalSummaryValue = styled.span`
   word-break: break-word;
 `;
 
+const ModalSummaryFieldFull = styled(ModalSummaryField)`
+  grid-column: 1 / -1;
+`;
+
+const ModalRemarkValue = styled(ModalSummaryValue)`
+  font-weight: 500;
+  white-space: pre-wrap;
+`;
+
 const ModalItemsHeading = styled.h3`
   margin: 0 0 10px;
   font-size: 11px;
@@ -982,7 +1185,7 @@ const ModalItemTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 13.5px;
-  min-width: 460px;
+  min-width: 600px;
 
   thead th {
     position: sticky;
@@ -1075,6 +1278,32 @@ function todayISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/* Earliest selectable reimbursement date: exactly one year before
+   today, calculated dynamically. If today is Feb 29, the day is
+   clamped to the last day of Feb in the previous year. */
+function oneYearAgoISO() {
+  const d = new Date();
+  const month = d.getMonth();
+  const day = d.getDate();
+  d.setDate(1);
+  d.setFullYear(d.getFullYear() - 1);
+  const lastDay = new Date(d.getFullYear(), month + 1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/* ISO (YYYY-MM-DD) strings compare correctly as plain strings. */
+function getInvoiceDateError(iso) {
+  if (!iso) return "Select a reimbursement date.";
+  if (iso > todayISO()) return "Reimbursement date cannot be in the future.";
+  if (iso < oneYearAgoISO()) return "Reimbursement date cannot be more than 1 year old.";
+  return undefined;
+}
+
 function isoToDDMMYYYY(iso) {
   if (!iso) return "";
   const [yyyy, mm, dd] = iso.split("-");
@@ -1116,7 +1345,31 @@ function extractApiError(err, fallback) {
   return err?.message || fallback;
 }
 
-const emptyDraft = { productId: "", productLabel: "", quantity: "1", price: "" };
+const emptyDraft = { productId: "", productLabel: "", quantity: "1", price: "", remark: "" };
+
+/* Shared by Add item and Edit item so both behave identically.
+   Price of 0 (or negative) is rejected. */
+function getQuantityError(value) {
+  const n = Number(value);
+  if (value === "" || value === null || value === undefined || !Number.isFinite(n) || n <= 0) {
+    return "Quantity must be greater than 0.";
+  }
+  if (!Number.isInteger(n)) return "Quantity must be a whole number.";
+  return undefined;
+}
+
+function getPriceError(value) {
+  const n = Number(value);
+  if (value === "" || value === null || value === undefined || !Number.isFinite(n) || n <= 0) {
+    return "Price must be greater than 0.";
+  }
+  return undefined;
+}
+
+function RemarkCell({ value }) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? <RemarkText>{text}</RemarkText> : <EmptyDash>—</EmptyDash>;
+}
 
 /* ==================================================================
    Component
@@ -1141,11 +1394,18 @@ const AddReimbursement = () => {
   const [customerOpen, setCustomerOpen] = useState(false);
 
   const [invoiceDate, setInvoiceDate] = useState(todayISO());
+  const [additionalRemarks, setAdditionalRemarks] = useState("");
 
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState(emptyDraft);
   const [productQuery, setProductQuery] = useState("");
   const [productOpen, setProductOpen] = useState(false);
+
+  // Inline edit state (UI-only; never sent to the API). Only one row
+  // can be edited at a time.
+  const [editingKey, setEditingKey] = useState(null);
+  const [editDraft, setEditDraft] = useState({ quantity: "", price: "", remark: "" });
+  const [editErrors, setEditErrors] = useState({});
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -1189,9 +1449,11 @@ const AddReimbursement = () => {
     const handleClick = (e) => {
       if (customerBoxRef.current && !customerBoxRef.current.contains(e.target)) {
         setCustomerOpen(false);
+        setCustomerQuery("");
       }
       if (productBoxRef.current && !productBoxRef.current.contains(e.target)) {
         setProductOpen(false);
+        setProductQuery("");
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -1202,8 +1464,7 @@ const AddReimbursement = () => {
     const q = customerQuery.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((c) => {
-      const haystack = `${c?.name || ""} ${c?.mobile_number || ""}`.toLowerCase();
-      return haystack.includes(q);
+      return String(c?.name || "").toLowerCase().includes(q);
     });
   }, [customers, customerQuery]);
 
@@ -1229,6 +1490,8 @@ const AddReimbursement = () => {
   const clearCustomer = () => {
     setCustomerId("");
     setCustomerLabel("");
+    setCustomerQuery("");
+    setErrors((prev) => ({ ...prev, customer: undefined }));
   };
 
   const selectDraftProduct = (p) => {
@@ -1256,14 +1519,12 @@ const AddReimbursement = () => {
     }
 
     const qty = Number(draft.quantity);
-    if (draft.quantity === "" || !Number.isFinite(qty) || qty <= 0) {
-      nextErrors.draftQuantity = "Quantity must be greater than 0.";
-    }
+    const qtyError = getQuantityError(draft.quantity);
+    if (qtyError) nextErrors.draftQuantity = qtyError;
 
     const price = Number(draft.price);
-    if (draft.price === "" || !Number.isFinite(price) || price < 0) {
-      nextErrors.draftPrice = "Enter a valid, non-negative price.";
-    }
+    const priceError = getPriceError(draft.price);
+    if (priceError) nextErrors.draftPrice = priceError;
 
     const hasError = Object.values(nextErrors).some(Boolean);
     setErrors((prev) => ({ ...prev, ...nextErrors, items: hasError ? prev.items : undefined }));
@@ -1277,13 +1538,73 @@ const AddReimbursement = () => {
         productLabel: draft.productLabel,
         quantity: qty,
         price,
+        remark: (draft.remark || "").trim(),
       },
     ]);
     setDraft(emptyDraft);
   };
 
+  const resetEditState = () => {
+    setEditingKey(null);
+    setEditDraft({ quantity: "", price: "", remark: "" });
+    setEditErrors({});
+  };
+
   const handleRemoveItem = (key) => {
+    if (key === editingKey) resetEditState();
     setItems((prev) => prev.filter((it) => it.key !== key));
+  };
+
+  const handleStartEdit = (it) => {
+    // Edit buttons on other rows are disabled while a row is being
+    // edited, so an unsaved edit can never be lost by switching rows.
+    if (submitting || (editingKey && editingKey !== it.key)) return;
+    setEditingKey(it.key);
+    setEditDraft({
+      quantity: String(it.quantity),
+      price: String(it.price),
+      remark: it.remark || "",
+    });
+    setEditErrors({});
+  };
+
+  const handleCancelEdit = () => {
+    resetEditState();
+    setErrors((prev) => ({ ...prev, items: undefined }));
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingKey) return;
+
+    const nextEditErrors = {
+      quantity: getQuantityError(editDraft.quantity),
+      price: getPriceError(editDraft.price),
+    };
+    if (Object.values(nextEditErrors).some(Boolean)) {
+      // Keep the row in edit mode; the original item is untouched.
+      setEditErrors(nextEditErrors);
+      return;
+    }
+
+    const qty = Number(editDraft.quantity);
+    const price = Number(editDraft.price);
+    const remark = (editDraft.remark || "").trim();
+
+    setItems((prev) =>
+      prev.map((it) => (it.key === editingKey ? { ...it, quantity: qty, price, remark } : it))
+    );
+    resetEditState();
+    setErrors((prev) => ({ ...prev, items: undefined }));
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancelEdit();
+    }
   };
 
   const validateForm = () => {
@@ -1291,13 +1612,13 @@ const AddReimbursement = () => {
 
     if (!customerId) nextErrors.customer = "Select a customer.";
 
-    if (!invoiceDate) {
-      nextErrors.invoiceDate = "Select an invoice date.";
-    } else if (invoiceDate > todayISO()) {
-      nextErrors.invoiceDate = "Invoice date cannot be in the future.";
-    }
+    nextErrors.invoiceDate = getInvoiceDateError(invoiceDate);
 
-    if (items.length === 0) nextErrors.items = "Add at least one item.";
+    if (items.length === 0) {
+      nextErrors.items = "Add at least one item.";
+    } else if (editingKey) {
+      nextErrors.items = "Save or cancel the item you are editing before continuing.";
+    }
 
     setErrors((prev) => ({ ...prev, ...nextErrors }));
     return !Object.values(nextErrors).some(Boolean);
@@ -1328,10 +1649,12 @@ const AddReimbursement = () => {
       order_data: {
         invoice_date: isoToDDMMYYYY(invoiceDate),
         customer_id: String(customerId),
+        add_remarks: additionalRemarks.trim(),
         item_list: items.map((it) => ({
           product_id: String(it.productId),
           price: Number(it.price).toFixed(2),
           quantity: Number(it.quantity),
+          remark: it.remark || "",
         })),
       },
     };
@@ -1400,7 +1723,7 @@ const AddReimbursement = () => {
             <SectionIconCircle>
               <FiFileText size={17} />
             </SectionIconCircle>
-            <SectionHeading>Invoice Details</SectionHeading>
+            <SectionHeading>Reimbursement Details</SectionHeading>
           </SectionHeader>
 
           <CardBody>
@@ -1455,7 +1778,6 @@ const AddReimbursement = () => {
                       filteredCustomers.map((c) => (
                         <DropdownItem key={c.id} type="button" onClick={() => selectCustomer(c)}>
                           <span>{c?.name || `Customer #${c.id}`}</span>
-                          {c?.mobile_number && <small>{c.mobile_number}</small>}
                         </DropdownItem>
                       ))
                     )}
@@ -1466,7 +1788,7 @@ const AddReimbursement = () => {
 
               <Field>
                 <Label htmlFor="rf-add-invoice-date">
-                  Invoice date<Required>*</Required>
+                  Reimbursement date<Required>*</Required>
                 </Label>
                 <DateInputWrap $hasError={!!errors.invoiceDate}>
                   <FiCalendar size={15} />
@@ -1474,10 +1796,14 @@ const AddReimbursement = () => {
                     id="rf-add-invoice-date"
                     type="date"
                     value={invoiceDate}
+                    min={oneYearAgoISO()}
                     max={todayISO()}
                     onChange={(e) => {
-                      setInvoiceDate(e.target.value);
-                      setErrors((p) => ({ ...p, invoiceDate: undefined }));
+                      const value = e.target.value;
+                      setInvoiceDate(value);
+                      // Validate immediately for a non-empty value; an empty
+                      // value (mid-typing) is caught on submit.
+                      setErrors((p) => ({ ...p, invoiceDate: value ? getInvoiceDateError(value) : undefined }));
                     }}
                     disabled={submitting}
                   />
@@ -1485,6 +1811,18 @@ const AddReimbursement = () => {
                 {errors.invoiceDate && <ErrorText>{errors.invoiceDate}</ErrorText>}
               </Field>
             </FieldsGrid>
+
+            <Field>
+              <Label htmlFor="rf-add-additional-remarks">Additional Remarks</Label>
+              <Textarea
+                id="rf-add-additional-remarks"
+                rows={3}
+                placeholder="Optional remarks for this reimbursement"
+                value={additionalRemarks}
+                onChange={(e) => setAdditionalRemarks(e.target.value)}
+                disabled={submitting}
+              />
+            </Field>
           </CardBody>
         </InvoiceCard>
 
@@ -1594,6 +1932,25 @@ const AddReimbursement = () => {
                 {errors.draftPrice && <ErrorText>{errors.draftPrice}</ErrorText>}
               </PriceField>
 
+              <RemarkField>
+                <Label htmlFor="rf-add-remark">Remark</Label>
+                <Input
+                  id="rf-add-remark"
+                  type="text"
+                  placeholder="Optional"
+                  value={draft.remark}
+                  onChange={(e) => setDraft((d) => ({ ...d, remark: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddItem();
+                    }
+                  }}
+                  disabled={submitting}
+                  autoComplete="off"
+                />
+              </RemarkField>
+
               <AddItemFieldWrap>
                 <LabelSpacer aria-hidden="true">&nbsp;</LabelSpacer>
                 <AddItemBtn type="button" onClick={handleAddItem} disabled={submitting}>
@@ -1611,31 +1968,123 @@ const AddReimbursement = () => {
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th className="rf-num">Qty</th>
-                      <th className="rf-num">Price</th>
+                      <th className="rf-num rf-col-qty">Qty</th>
+                      <th className="rf-num rf-col-price">Price</th>
+                      <th className="rf-col-remark">Remark</th>
                       <th className="rf-num">Amount</th>
-                      <th className="rf-actions" />
+                      <th className="rf-actions">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((it) => (
-                      <tr key={it.key}>
-                        <td>{it.productLabel}</td>
-                        <td className="rf-num">{it.quantity}</td>
-                        <td className="rf-num">₹{formatCurrency(it.price)}</td>
-                        <td className="rf-num">₹{formatCurrency(it.quantity * it.price)}</td>
-                        <td className="rf-actions">
-                          <RemoveBtn
-                            type="button"
-                            onClick={() => handleRemoveItem(it.key)}
-                            disabled={submitting}
-                            aria-label={`Remove ${it.productLabel}`}
-                          >
-                            <FiTrash2 size={13} />
-                          </RemoveBtn>
-                        </td>
-                      </tr>
-                    ))}
+                    {items.map((it) => {
+                      if (editingKey === it.key) {
+                        const liveAmount = (Number(editDraft.quantity) || 0) * (Number(editDraft.price) || 0);
+                        return (
+                          <tr key={it.key} className="rf-editing">
+                            <td>
+                              <CellStatic>{it.productLabel}</CellStatic>
+                            </td>
+                            <td className="rf-num">
+                              <CellInput
+                                type="number"
+                                min="1"
+                                step="1"
+                                $right
+                                value={editDraft.quantity}
+                                onChange={(e) => {
+                                  setEditDraft((d) => ({ ...d, quantity: e.target.value }));
+                                  setEditErrors((p) => ({ ...p, quantity: undefined }));
+                                }}
+                                onKeyDown={handleEditKeyDown}
+                                disabled={submitting}
+                                $hasError={!!editErrors.quantity}
+                                aria-label={`Quantity for ${it.productLabel}`}
+                              />
+                              {editErrors.quantity && <CellError>{editErrors.quantity}</CellError>}
+                            </td>
+                            <td className="rf-num">
+                              <CellInput
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                $right
+                                value={editDraft.price}
+                                onChange={(e) => {
+                                  setEditDraft((d) => ({ ...d, price: e.target.value }));
+                                  setEditErrors((p) => ({ ...p, price: undefined }));
+                                }}
+                                onKeyDown={handleEditKeyDown}
+                                disabled={submitting}
+                                $hasError={!!editErrors.price}
+                                aria-label={`Price for ${it.productLabel}`}
+                              />
+                              {editErrors.price && <CellError>{editErrors.price}</CellError>}
+                            </td>
+                            <td>
+                              <CellInput
+                                type="text"
+                                placeholder="Optional"
+                                value={editDraft.remark}
+                                onChange={(e) => setEditDraft((d) => ({ ...d, remark: e.target.value }))}
+                                onKeyDown={handleEditKeyDown}
+                                disabled={submitting}
+                                autoComplete="off"
+                                aria-label={`Remark for ${it.productLabel}`}
+                              />
+                            </td>
+                            <td className="rf-num">
+                              <CellStatic $right>₹{formatCurrency(liveAmount)}</CellStatic>
+                            </td>
+                            <td className="rf-actions">
+                              <ActionGroup>
+                                <InlineSaveBtn type="button" onClick={handleSaveEdit} disabled={submitting}>
+                                  <FiCheck size={13} />
+                                  Save
+                                </InlineSaveBtn>
+                                <InlineCancelBtn type="button" onClick={handleCancelEdit} disabled={submitting}>
+                                  <FiX size={13} />
+                                  Cancel
+                                </InlineCancelBtn>
+                              </ActionGroup>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <tr key={it.key}>
+                          <td>{it.productLabel}</td>
+                          <td className="rf-num">{it.quantity}</td>
+                          <td className="rf-num">₹{formatCurrency(it.price)}</td>
+                          <td>
+                            <RemarkCell value={it.remark} />
+                          </td>
+                          <td className="rf-num">₹{formatCurrency(it.quantity * it.price)}</td>
+                          <td className="rf-actions">
+                            <ActionGroup>
+                              <EditBtn
+                                type="button"
+                                onClick={() => handleStartEdit(it)}
+                                disabled={submitting || (!!editingKey && editingKey !== it.key)}
+                                aria-label={`Edit ${it.productLabel}`}
+                                title={editingKey ? "Save or cancel the current edit first" : "Edit"}
+                              >
+                                <FiEdit2 size={13} />
+                              </EditBtn>
+                              <RemoveBtn
+                                type="button"
+                                onClick={() => handleRemoveItem(it.key)}
+                                disabled={submitting}
+                                aria-label={`Remove ${it.productLabel}`}
+                                title="Remove"
+                              >
+                                <FiTrash2 size={13} />
+                              </RemoveBtn>
+                            </ActionGroup>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </ItemsTable>
               </ItemsWrap>
@@ -1696,9 +2145,13 @@ const AddReimbursement = () => {
                   <ModalSummaryValue>{customerLabel || "—"}</ModalSummaryValue>
                 </ModalSummaryField>
                 <ModalSummaryField>
-                  <ModalSummaryLabel>Invoice Date</ModalSummaryLabel>
+                  <ModalSummaryLabel>Reimbursement Date</ModalSummaryLabel>
                   <ModalSummaryValue>{isoToDDMMYYYY(invoiceDate) || "—"}</ModalSummaryValue>
                 </ModalSummaryField>
+                <ModalSummaryFieldFull>
+                  <ModalSummaryLabel>Additional Remarks</ModalSummaryLabel>
+                  <ModalRemarkValue>{additionalRemarks.trim() || "—"}</ModalRemarkValue>
+                </ModalSummaryFieldFull>
               </ModalSection>
 
               <div>
@@ -1710,6 +2163,7 @@ const AddReimbursement = () => {
                         <th>Product</th>
                         <th className="rf-num">Qty</th>
                         <th className="rf-num">Price</th>
+                        <th>Remark</th>
                         <th className="rf-num">Amount</th>
                       </tr>
                     </thead>
@@ -1719,6 +2173,9 @@ const AddReimbursement = () => {
                           <td>{it.productLabel}</td>
                           <td className="rf-num">{it.quantity}</td>
                           <td className="rf-num">₹{formatCurrency(it.price)}</td>
+                          <td>
+                            <RemarkCell value={it.remark} />
+                          </td>
                           <td className="rf-num">₹{formatCurrency(Number(it.quantity) * Number(it.price))}</td>
                         </tr>
                       ))}

@@ -2,14 +2,22 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import { FiPlus, FiAlertCircle, FiRefreshCw } from "react-icons/fi";
+import { FiPlus, FiAlertCircle, FiRefreshCw, FiDownload } from "react-icons/fi";
+import { toast } from "react-toastify";
+import * as XLSX from "xlsx";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import SummaryCards from "../components/reimbursement/SummaryCards";
 import ReimbursementFilters from "../components/reimbursement/ReimbursementFilters";
 import ReimbursementTable from "../components/reimbursement/ReimbursementTable";
 import ReimbursementDetailsModal from "../components/reimbursement/ReimbursementDetailsModal";
 import { getReimbursementOrderList } from "../services/productServices";
-import { filterRecords } from "../utils/reimbursementUtils";
+import {
+  filterRecords,
+  safeText,
+  formatApiDate,
+  getOutstandingAmount,
+  getPaymentStatusLabel,
+} from "../utils/reimbursementUtils";
 
 const PAGE_SIZE = 10;
 
@@ -234,6 +242,39 @@ const Spinner = styled.div`
   }
 `;
 
+// ---- Export to Excel section (placed after the table/pagination) ----
+
+const ExportSection = styled.div`
+  margin-top: 20px;
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-line);
+  border-radius: var(--rf-radius-md);
+  box-shadow: var(--rf-shadow-sm);
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+`;
+
+const ExportText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const ExportTitle = styled.span`
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rf-ink);
+`;
+
+const ExportSubtitle = styled.span`
+  font-size: 12.5px;
+  color: var(--rf-slate);
+`;
+
 const ReimbursementFees = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -367,6 +408,39 @@ const ReimbursementFees = () => {
     },
   ].filter(Boolean);
 
+  // Exports the COMPLETE `records` array (every reimbursement order the API
+  // returned) — never `filteredRecords`/`paginatedRecords` — into a single
+  // "Reimbursement Fees" worksheet, using the same field interpretation the
+  // table already uses (reimbursementUtils), restricted to just the six
+  // reimbursement-level columns. No second API call, no mutation of
+  // `records`, no touching filters/pagination.
+  const handleExportToExcel = () => {
+    if (!records || records.length === 0) {
+      toast.info("No reimbursement records available to export.");
+      return;
+    }
+
+    const exportRows = records.map((r) => ({
+      "Customer Name": safeText(r.customer_name),
+      "Invoice Number": safeText(r.invoice_number),
+      "Invoice Date": formatApiDate(r.invoice_date),
+      "Due Date": formatApiDate(r.invoice_due_date),
+      "Outstanding Amount": getOutstandingAmount(r),
+      "Payment Status": getPaymentStatusLabel(r),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reimbursement Fees");
+
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+      today.getDate()
+    ).padStart(2, "0")}`;
+
+    XLSX.writeFile(workbook, `Reimbursement_Fees_${dateStr}.xlsx`);
+  };
+
   return (
     <DashboardLayout
       activeNav="reimbursement-fees"
@@ -420,6 +494,17 @@ const ReimbursementFees = () => {
             />
 
             <ReimbursementTable records={paginatedRecords} onView={setSelectedRecord} pagination={pagination} />
+
+            <ExportSection>
+              <ExportText>
+                <ExportTitle>Export Data</ExportTitle>
+                <ExportSubtitle>Download all reimbursement records</ExportSubtitle>
+              </ExportText>
+              <SecondaryButton type="button" onClick={handleExportToExcel}>
+                <FiDownload size={14} />
+                <span>Export to Excel</span>
+              </SecondaryButton>
+            </ExportSection>
           </>
         )}
       </Page>

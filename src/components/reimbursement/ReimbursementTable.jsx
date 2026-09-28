@@ -228,8 +228,8 @@ const ReimbursementTable = ({ records, onView, pagination }) => {
           <thead>
             <tr>
               <th>Customer Name</th>
-              <th>Invoice Number</th>
-              <th>Invoice Date</th>
+              <th>Reimbursement Number</th>
+              <th>Reimbursement Date</th>
               <th>Due Date</th>
               <NumCell>Outstanding Amount</NumCell>
               <StatusHeadCell>Payment Status</StatusHeadCell>

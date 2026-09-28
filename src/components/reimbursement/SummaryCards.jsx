@@ -153,7 +153,7 @@ const SummaryCards = ({ records }) => {
   const cards = [
     {
       key: "totalInvoices",
-      label: "Total Invoices",
+      label: "Total Reimbursement",
       figure: summary.totalInvoices,
       detail: "All reimbursement invoices",
       icon: FiFileText,
@@ -161,7 +161,7 @@ const SummaryCards = ({ records }) => {
     },
     {
       key: "paid",
-      label: "Paid Invoices",
+      label: "Paid Reimbursement",
       figure: summary.paidCount,
       detail: "Fully paid",
       icon: FiCheckCircle,
@@ -169,7 +169,7 @@ const SummaryCards = ({ records }) => {
     },
     {
       key: "notPaid",
-      label: "Not Paid Invoices",
+      label: "Not Paid Reimbursement",
       figure: summary.notPaidCount,
       detail: "Awaiting payment",
       icon: FiClock,
@@ -177,7 +177,7 @@ const SummaryCards = ({ records }) => {
     },
     {
       key: "overdue",
-      label: "Overdue Invoices",
+      label: "Overdue Reimbursement",
       figure: summary.overdueCount,
       detail: "Past the due date",
       icon: FiAlertTriangle,

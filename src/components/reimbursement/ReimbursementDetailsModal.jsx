@@ -305,7 +305,7 @@ const ReimbursementDetailsModal = ({ record, onClose }) => {
             </Field> */}
             
             <Field>
-              <FieldLabel>Invoice date</FieldLabel>
+              <FieldLabel>Reimbursement date</FieldLabel>
               <FieldValue>{formatApiDate(record.invoice_date)}</FieldValue>
             </Field>
             <Field>
