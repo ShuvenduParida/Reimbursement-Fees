@@ -546,6 +546,7 @@ const ReimbursementFilters = ({
     Boolean(filters.status) ||
     Boolean(filters.overdue) ||
     Boolean(filters.amountRange && filters.amountRange !== "all") ||
+    Boolean(filters.dueRange) ||
     Boolean(filters.dateFrom) ||
     Boolean(filters.dateTo);
 
@@ -581,6 +582,7 @@ const ReimbursementFilters = ({
           <option value="">Overdue: all</option>
           <option value="yes">Overdue only</option>
           <option value="no">Not overdue</option>
+          <option value="today">Due today</option>
         </AnimatedSelect>
 
         <AnimatedSelect

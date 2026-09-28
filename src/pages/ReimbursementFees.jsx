@@ -1,8 +1,8 @@
 // src/pages/ReimbursementFees.jsx
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import styled from "styled-components";
-import { FiPlus, FiAlertCircle, FiRefreshCw, FiDownload } from "react-icons/fi";
+import { FiPlus, FiAlertCircle, FiRefreshCw, FiDownload, FiBarChart2, FiList } from "react-icons/fi";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -18,6 +18,13 @@ import {
   getOutstandingAmount,
   getPaymentStatusLabel,
 } from "../utils/reimbursementUtils";
+import {
+  AMOUNT_RANGE_OPTIONS,
+  DUE_RANGE_OPTIONS,
+  resolveAmount,
+  applyAmountRange,
+  applyDueRange,
+} from "../utils/reimbursementFilterRanges";
 
 const PAGE_SIZE = 10;
 
@@ -27,84 +34,30 @@ const EMPTY_FILTERS = {
   status: "",
   overdue: "",
   amountRange: "all",
+  dueRange: "",
   dateFrom: "",
   dateTo: "",
 };
 
-// ---- Amount range filter (frontend only, on already-loaded records) ----
+// ---- Range filters ----
+// The amount-range definitions/logic (AMOUNT_RANGE_OPTIONS, resolveAmount,
+// applyAmountRange) now live in utils/reimbursementFilterRanges.js, moved
+// unchanged, so the Dashboard charts use exactly the same boundaries and the
+// same amount-field detection as this page. dueRange is the new companion
+// filter set by the Dashboard's Due Date chart.
 
-// Keys tried first, in this order. If your outstanding amount uses a
-// different key, add it at the top of this list.
-const PREFERRED_AMOUNT_KEYS = [
-  "outstanding_amount",
-  "outstandingAmount",
-  "outstanding",
-  "outstanding_balance",
-  "balance_amount",
-  "balance",
-  "due_amount",
-  "pending_amount",
-  "invoice_amount",
-  "total_amount",
-  "grand_total",
-  "amount",
-  "total",
-];
-
-// Fallback scan: keys that look like money, minus keys that clearly aren't.
-const AMOUNT_KEY_PATTERN = /outstanding|balance|due|pending|amount|total/i;
-const NON_AMOUNT_KEY_PATTERN = /date|status|over_?due|days|number|_id$|^id$|_no$|name|email|phone/i;
-
-const AMOUNT_RANGE_OPTIONS = [
-  { value: "all", label: "All amounts", chipLabel: "", test: () => true },
-  { value: "0-2000", label: "0 - 2,000", chipLabel: "Amount: 0 - 2,000", test: (n) => n >= 0 && n <= 2000 },
-  { value: "2000-4000", label: "2,000 - 4,000", chipLabel: "Amount: 2,000 - 4,000", test: (n) => n > 2000 && n <= 4000 },
-  { value: "4000-8000", label: "4,000 - 8,000", chipLabel: "Amount: 4,000 - 8,000", test: (n) => n > 4000 && n <= 8000 },
-  { value: "8000+", label: "More than 8,000", chipLabel: "Amount: More than 8,000", test: (n) => n > 8000 },
-];
-
-// Safe numeric conversion: handles null / undefined / "" / strings with
-// commas or currency symbols. Returns NaN when no usable number is found
-// (Number("") would otherwise silently become 0).
-const toNumericAmount = (value) => {
-  if (typeof value === "number") return value;
-  const cleaned = String(value ?? "").replace(/[^0-9.-]/g, "");
-  if (cleaned === "" || cleaned === "-" || cleaned === ".") return NaN;
-  return Number(cleaned);
-};
-
-const hasValue = (v) => v !== undefined && v !== null && v !== "";
-
-// Returns { key, amount } for the first usable amount on the record,
-// or { key: null, amount: NaN } if none is found.
-const resolveAmount = (record) => {
-  if (!record || typeof record !== "object") return { key: null, amount: NaN };
-
-  for (const key of PREFERRED_AMOUNT_KEYS) {
-    if (hasValue(record[key])) {
-      const amount = toNumericAmount(record[key]);
-      if (Number.isFinite(amount)) return { key, amount };
-    }
-  }
-
-  for (const key of Object.keys(record)) {
-    if (!AMOUNT_KEY_PATTERN.test(key) || NON_AMOUNT_KEY_PATTERN.test(key)) continue;
-    if (!hasValue(record[key]) || typeof record[key] === "object") continue;
-    const amount = toNumericAmount(record[key]);
-    if (Number.isFinite(amount)) return { key, amount };
-  }
-
-  return { key: null, amount: NaN };
-};
-
-const applyAmountRange = (records, amountRange) => {
-  if (!amountRange || amountRange === "all") return records;
-  const option = AMOUNT_RANGE_OPTIONS.find((o) => o.value === amountRange);
-  if (!option) return records;
-  return records.filter((record) => {
-    const { amount } = resolveAmount(record);
-    return Number.isFinite(amount) && option.test(amount);
-  });
+// The Dashboard links here with ?amountRange=... or ?dueRange=... . Only known
+// values are accepted; anything else is ignored.
+const readFiltersFromUrl = (searchParams) => {
+  const amountRange = searchParams.get("amountRange");
+  const dueRange = searchParams.get("dueRange");
+  return {
+    ...EMPTY_FILTERS,
+    amountRange: AMOUNT_RANGE_OPTIONS.some((o) => o.value === amountRange)
+      ? amountRange
+      : EMPTY_FILTERS.amountRange,
+    dueRange: DUE_RANGE_OPTIONS.some((o) => o.value === dueRange) ? dueRange : EMPTY_FILTERS.dueRange,
+  };
 };
 
 // ---- Page-level styling (moved out of ReimbursementFees.css) ----
@@ -144,6 +97,76 @@ const Subtitle = styled.p`
   font-size: 13.5px;
   color: var(--rf-slate);
   margin: 0;
+`;
+
+// Scrollbar fix: this bar used to draw its bottom rule with `border-bottom`
+// and let each tab overlap it with `margin-bottom: -1px`. Because the bar has
+// `overflow-x: auto` (kept so the tabs can scroll sideways on very narrow
+// screens), CSS also computes overflow-y as `auto`, so the 1px the tabs
+// stuck out below the bar's padding box counted as scrollable overflow and a
+// scrollbar appeared. Now the rule is an inset box-shadow (paints inside the
+// bar, adds no overflow), the tabs no longer use a negative margin, and
+// overflow-y is explicitly hidden. The horizontal scroll still appears, but
+// only when the tabs genuinely don't fit.
+const TabBar = styled.div`
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 -1px 0 var(--rf-line);
+  overflow-x: auto;
+  overflow-y: hidden;
+`;
+
+const Tab = styled.button`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 12px 26px;
+  border: 1px solid ${({ $active }) => ($active ? "var(--rf-brass)" : "transparent")};
+  border-bottom: none;
+  border-radius: var(--rf-radius-md) var(--rf-radius-md) 0 0;
+  background: ${({ $active }) => ($active ? "var(--rf-brass-soft)" : "var(--rf-paper)")};
+  color: ${({ $active }) => ($active ? "var(--rf-brass-dark)" : "var(--rf-ink-soft)")};
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: ${({ $active }) => ($active ? "default" : "pointer")};
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 26px;
+    right: 26px;
+    bottom: 0;
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    background: ${({ $active }) => ($active ? "var(--rf-brass)" : "transparent")};
+  }
+
+  &:hover {
+    color: var(--rf-brass-dark);
+  }
+
+  /* Inset ring: an outward ring would be clipped by the bar's overflow. */
+  &:focus-visible {
+    outline: 2px solid var(--rf-brass);
+    outline-offset: -2px;
+  }
+
+  @media (max-width: 560px) {
+    padding: 10px 18px;
+    font-size: 14px;
+
+    &::after {
+      left: 18px;
+      right: 18px;
+    }
+  }
 `;
 
 const PrimaryButton = styled.button`
@@ -277,7 +300,10 @@ const ExportSubtitle = styled.span`
 
 const ReimbursementFees = () => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Seeded once from the URL (e.g. arriving from a Dashboard bar); after that
+  // `filters` stays the single source of truth for the page.
+  const [filters, setFilters] = useState(() => readFiltersFromUrl(searchParams));
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -313,7 +339,7 @@ const ReimbursementFees = () => {
 
   // Diagnostic: if no record yields a usable amount, the amount filter can
   // never match anything. Log the real keys so the field can be added to
-  // PREFERRED_AMOUNT_KEYS.
+  // PREFERRED_AMOUNT_KEYS (utils/reimbursementFilterRanges.js).
   useEffect(() => {
     if (records.length === 0) return;
     const resolved = records.map(resolveAmount).filter((r) => r.key);
@@ -332,12 +358,25 @@ const ReimbursementFees = () => {
     [records]
   );
 
-  // Existing filters first, then the amount range on top of the result, so
-  // all filters combine (AND).
+  // Existing filters first, then the amount range, then the due range (set by
+  // the Dashboard) on top of the result, so all filters combine (AND).
   const filteredRecords = useMemo(
-    () => applyAmountRange(filterRecords(records, filters), filters.amountRange),
+    () => applyDueRange(applyAmountRange(filterRecords(records, filters), filters.amountRange), filters.dueRange),
     [records, filters]
   );
+
+  // Keeps ?amountRange / ?dueRange in step with the filters (replace, not push,
+  // so Back still returns to the Dashboard). Removing a chip or "Clear all"
+  // therefore also removes the param, and a refresh restores the same view.
+  // Any other query params are left untouched.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (filters.amountRange && filters.amountRange !== "all") next.set("amountRange", filters.amountRange);
+    else next.delete("amountRange");
+    if (filters.dueRange) next.set("dueRange", filters.dueRange);
+    else next.delete("dueRange");
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+  }, [filters.amountRange, filters.dueRange, searchParams, setSearchParams]);
 
   // Filtering happens before pagination (API records -> filter -> paginate
   // -> table), per spec. Any change to the filters or to the underlying
@@ -373,9 +412,16 @@ const ReimbursementFees = () => {
 
   const statusLabel = filters.status === "paid" ? "Paid" : filters.status === "not_paid" ? "Not Paid" : "";
   const overdueLabel =
-    filters.overdue === "yes" ? "Overdue only" : filters.overdue === "no" ? "Not overdue" : "";
+    filters.overdue === "yes"
+      ? "Overdue only"
+      : filters.overdue === "no"
+      ? "Not overdue"
+      : filters.overdue === "today"
+      ? "Due today"
+      : "";
   const amountRangeLabel =
     AMOUNT_RANGE_OPTIONS.find((o) => o.value === filters.amountRange)?.chipLabel || "";
+  const dueRangeLabel = DUE_RANGE_OPTIONS.find((o) => o.value === filters.dueRange)?.chipLabel || "";
 
   const activeChips = [
     filters.customer && {
@@ -397,6 +443,11 @@ const ReimbursementFees = () => {
       key: "amountRange",
       label: amountRangeLabel,
       onRemove: () => updateFilter("amountRange", "all"),
+    },
+    dueRangeLabel && {
+      key: "dueRange",
+      label: dueRangeLabel,
+      onRemove: () => updateFilter("dueRange", ""),
     },
     (filters.dateFrom || filters.dateTo) && {
       key: "dateRange",
@@ -458,6 +509,22 @@ const ReimbursementFees = () => {
             <span>Add Reimbursement</span>
           </PrimaryButton>
         </HeaderRow>
+
+        <TabBar role="tablist" aria-label="Reimbursement Fees sections">
+          <Tab type="button" role="tab" aria-selected="true" $active>
+            <FiList size={18} />
+            <span>Reimbursements</span>
+          </Tab>
+          <Tab
+            type="button"
+            role="tab"
+            aria-selected="false"
+            onClick={() => navigate("/reimbursement-fees/dashboard")}
+          >
+            <FiBarChart2 size={18} />
+            <span>Dashboard</span>
+          </Tab>
+        </TabBar>
 
         {loading ? (
           <StateCard $variant="loading">

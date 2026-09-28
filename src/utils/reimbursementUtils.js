@@ -94,6 +94,20 @@ export function isOverdueRecord(record) {
   return Boolean(record?.is_over_due);
 }
 
+// "Due today" = the record's due date is today's LOCAL calendar date.
+// parseApiDate builds a local-midnight Date, so comparing year / month / day
+// components is a pure calendar comparison: no timestamps, no timezone or DST
+// drift, and it doesn't matter what time of day `today` was read.
+export function isDueToday(record, today = new Date()) {
+  const due = parseApiDate(record?.invoice_due_date);
+  if (!due) return false;
+  return (
+    due.getFullYear() === today.getFullYear() &&
+    due.getMonth() === today.getMonth() &&
+    due.getDate() === today.getDate()
+  );
+}
+
 export function formatCurrency(amount, symbol = "") {
   const value = Number(amount) || 0;
   return `${symbol}${value.toLocaleString("en-IN", {
@@ -201,12 +215,13 @@ export function filterRecords(records, filters) {
     search = "",
     customer = "",
     status = "", // "paid" | "not_paid" | ""
-    overdue = "", // "yes" | "no" | ""
+    overdue = "", // "yes" | "no" | "today" | ""
     dateFrom = "",
     dateTo = "",
   } = filters;
 
   const q = search.trim().toLowerCase();
+  const today = new Date(); // read once so every record is compared to the same day
 
   return records.filter((r) => {
     if (q) {
@@ -218,6 +233,8 @@ export function filterRecords(records, filters) {
     if (status === "not_paid" && isPaid(r)) return false;
     if (overdue === "yes" && !isOverdueRecord(r)) return false;
     if (overdue === "no" && isOverdueRecord(r)) return false;
+    // Independent of "yes"/"no": purely "is the due date today".
+    if (overdue === "today" && !isDueToday(r, today)) return false;
 
     if (dateFrom || dateTo) {
       const invoiceDate = parseApiDate(r.invoice_date);

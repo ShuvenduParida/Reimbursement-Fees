@@ -16,6 +16,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 // Sales module
 import ReimbursementFees from "./pages/ReimbursementFees";
 import AddReimbursement from "./pages/AddReimbursement";
+import ReimbursementDashboard from "./pages/ReimbursementDashboard";
 
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
                   
                   <Route path="/reimbursement-fees" element={<ReimbursementFees />} />
                   <Route path="/reimbursement-fees/add" element={<AddReimbursement />} />
+                  <Route path="/reimbursement-fees/dashboard" element={<ReimbursementDashboard />} />
                   
                 </Route>
                 
