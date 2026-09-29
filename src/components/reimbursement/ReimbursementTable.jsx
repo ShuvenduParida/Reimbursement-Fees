@@ -1,6 +1,6 @@
 // src/components/reimbursement/ReimbursementTable.jsx
 import styled from "styled-components";
-import { FiInbox, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiInbox, FiChevronLeft, FiChevronRight, FiUpload } from "react-icons/fi";
 import StatusBadge from "./StatusBadge";
 import ReimbursementRowActions from "./ReimbursementRowActions";
 import {
@@ -112,6 +112,7 @@ const ClickableRow = styled.tr`
   }
 `;
 
+// "Actions" column holds only the View button.
 const ActionsCell = styled.td`
   text-align: left;
   white-space: nowrap;
@@ -119,6 +120,49 @@ const ActionsCell = styled.td`
 
 const ActionsHeadCell = styled.th`
   text-align: left;
+`;
+
+// NEW: separate "Upload" column so it has its own header.
+const UploadCell = styled.td`
+  text-align: left;
+  white-space: nowrap;
+  width: 170px;
+  padding-left: 30px;
+`;
+
+const UploadHeadCell = styled.th`
+  text-align: left;
+  width: 170px;
+  padding-left: 30px;
+`;
+
+// Outlined button so it does not compete with the dark View button.
+const UploadButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--rf-radius-sm);
+  border: 1px solid var(--rf-line-strong);
+  background: var(--rf-surface);
+  color: var(--rf-ink-soft);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--rf-brass-soft);
+    border-color: var(--rf-brass);
+    color: var(--rf-brass-dark);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--rf-brass);
+    outline-offset: 2px;
+  }
 `;
 
 const Empty = styled.div`
@@ -215,7 +259,7 @@ function getPageNumbers(current, total) {
   return [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
 }
 
-const ReimbursementTable = ({ records, onView, onCustomerSelect, pagination }) => {
+const ReimbursementTable = ({ records, onView, onUpload, onCustomerSelect, pagination }) => {
   const selectCustomer = (name) => {
     if (onCustomerSelect && name) onCustomerSelect(name);
   };
@@ -250,6 +294,8 @@ const ReimbursementTable = ({ records, onView, onCustomerSelect, pagination }) =
               <NumCell>Outstanding Amount</NumCell>
               <StatusHeadCell>Payment Status</StatusHeadCell>
               <ActionsHeadCell>Actions</ActionsHeadCell>
+              {/* NEW: Upload column header */}
+              <UploadHeadCell>Upload</UploadHeadCell>
             </tr>
           </thead>
           <tbody>
@@ -280,11 +326,26 @@ const ReimbursementTable = ({ records, onView, onCustomerSelect, pagination }) =
                   <StatusTd>
                     <StatusBadge paid={paid} overdue={overdue} />
                   </StatusTd>
-                  {/* Stop propagation so clicking View never triggers the row's
-                      customer filter. */}
+
+                  {/* Stop propagation so clicking View / Upload never triggers the
+                      row's customer filter. */}
                   <ActionsCell onClick={(e) => e.stopPropagation()}>
                     <ReimbursementRowActions record={r} onView={() => onView(r)} />
                   </ActionsCell>
+
+                  {/* NEW: Upload cell */}
+                  <UploadCell onClick={(e) => e.stopPropagation()}>
+                    {onUpload && (
+                      <UploadButton
+                        type="button"
+                        onClick={() => onUpload(r)}
+                        aria-label={`Upload document for ${safeText(r.invoice_number)}`}
+                      >
+                        <FiUpload size={14} />
+                        <span>Upload</span>
+                      </UploadButton>
+                    )}
+                  </UploadCell>
                 </ClickableRow>
               );
             })}

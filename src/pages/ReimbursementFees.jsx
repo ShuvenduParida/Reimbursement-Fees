@@ -10,6 +10,7 @@ import SummaryCards from "../components/reimbursement/SummaryCards";
 import ReimbursementFilters from "../components/reimbursement/ReimbursementFilters";
 import ReimbursementTable from "../components/reimbursement/ReimbursementTable";
 import ReimbursementDetailsModal from "../components/reimbursement/ReimbursementDetailsModal";
+import ReimbursementUploadModal from "../components/reimbursement/ReimbursementUploadModal"; // NEW
 import { getReimbursementOrderList } from "../services/productServices";
 import {
   filterRecords,
@@ -305,6 +306,7 @@ const ReimbursementFees = () => {
   // `filters` stays the single source of truth for the page.
   const [filters, setFilters] = useState(() => readFiltersFromUrl(searchParams));
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [uploadRecord, setUploadRecord] = useState(null); // NEW: record the Upload modal is open for
   const [currentPage, setCurrentPage] = useState(1);
 
   const [records, setRecords] = useState([]);
@@ -363,6 +365,13 @@ const ReimbursementFees = () => {
   const filteredRecords = useMemo(
     () => applyDueRange(applyAmountRange(filterRecords(records, filters), filters.amountRange), filters.dueRange),
     [records, filters]
+  );
+
+  // True when at least one filter differs from its default. Used by the
+  // Export section so its wording and the file name reflect what is exported.
+  const hasActiveFilters = useMemo(
+    () => Object.keys(EMPTY_FILTERS).some((key) => filters[key] !== EMPTY_FILTERS[key]),
+    [filters]
   );
 
   // Keeps ?amountRange / ?dueRange in step with the filters (replace, not push,
@@ -459,19 +468,24 @@ const ReimbursementFees = () => {
     },
   ].filter(Boolean);
 
-  // Exports the COMPLETE `records` array (every reimbursement order the API
-  // returned) — never `filteredRecords`/`paginatedRecords` — into a single
-  // "Reimbursement Fees" worksheet, using the same field interpretation the
-  // table already uses (reimbursementUtils), restricted to just the six
-  // reimbursement-level columns. No second API call, no mutation of
+  // Exports EVERY record matching the current filters (`filteredRecords`,
+  // across all pages — not just the visible page) into a single
+  // "Reimbursement Fees" worksheet. With no filters applied this is the full
+  // set of records, so the behaviour is unchanged. Uses the same field
+  // interpretation the table already uses (reimbursementUtils), restricted to
+  // the six reimbursement-level columns. No second API call, no mutation of
   // `records`, no touching filters/pagination.
   const handleExportToExcel = () => {
-    if (!records || records.length === 0) {
-      toast.info("No reimbursement records available to export.");
+    if (!filteredRecords || filteredRecords.length === 0) {
+      toast.info(
+        hasActiveFilters
+          ? "No records match the current filters to export."
+          : "No reimbursement records available to export."
+      );
       return;
     }
 
-    const exportRows = records.map((r) => ({
+    const exportRows = filteredRecords.map((r) => ({
       "Customer Name": safeText(r.customer_name),
       "Invoice Number": safeText(r.invoice_number),
       "Invoice Date": formatApiDate(r.invoice_date),
@@ -489,7 +503,24 @@ const ReimbursementFees = () => {
       today.getDate()
     ).padStart(2, "0")}`;
 
-    XLSX.writeFile(workbook, `Reimbursement_Fees_${dateStr}.xlsx`);
+    XLSX.writeFile(workbook, `Reimbursement_Fees${hasActiveFilters ? "_Filtered" : ""}_${dateStr}.xlsx`);
+  };
+
+  // NEW: called by the Upload modal when the user clicks "Upload".
+  // The form data is ready to send; connect your real upload API where marked.
+  // If the API call fails, show toast.error(...) and `throw err` so the modal
+  // stays open and the user does not lose the file or note.
+  const handleUploadSubmit = async ({ record, file, refNote }) => {
+    const formData = new FormData();
+    formData.append("invoice_number", record.invoice_number);
+    formData.append("file", file);
+    formData.append("ref_note", refNote);
+
+    // TODO: replace the next two lines with your upload API call, e.g.
+    //   await uploadReimbursementDocument(formData);
+    //   toast.success("Document uploaded successfully.");
+    console.log("Upload payload:", { invoice_number: record.invoice_number, fileName: file.name, refNote });
+    toast.info("Upload form works. Connect the upload API in handleUploadSubmit.");
   };
 
   return (
@@ -566,6 +597,7 @@ const ReimbursementFees = () => {
             <ReimbursementTable
               records={paginatedRecords}
               onView={setSelectedRecord}
+              onUpload={setUploadRecord} // NEW
               onCustomerSelect={(customerName) => updateFilter("customer", customerName)}
               pagination={pagination}
             />
@@ -573,11 +605,17 @@ const ReimbursementFees = () => {
             <ExportSection>
               <ExportText>
                 <ExportTitle>Export Data</ExportTitle>
-                <ExportSubtitle>Download all reimbursement records</ExportSubtitle>
+                <ExportSubtitle>
+                  {hasActiveFilters
+                    ? `Download the ${filteredRecords.length} record${
+                        filteredRecords.length === 1 ? "" : "s"
+                      } matching your current filters`
+                    : "Download all reimbursement records"}
+                </ExportSubtitle>
               </ExportText>
               <SecondaryButton type="button" onClick={handleExportToExcel}>
                 <FiDownload size={14} />
-                <span>Export to Excel</span>
+                <span>{hasActiveFilters ? "Export Filtered to Excel" : "Export to Excel"}</span>
               </SecondaryButton>
             </ExportSection>
           </>
@@ -586,6 +624,15 @@ const ReimbursementFees = () => {
 
       {selectedRecord && (
         <ReimbursementDetailsModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      )}
+
+      {/* NEW: Upload modal (file + Ref No / Note) */}
+      {uploadRecord && (
+        <ReimbursementUploadModal
+          record={uploadRecord}
+          onClose={() => setUploadRecord(null)}
+          onSubmit={handleUploadSubmit}
+        />
       )}
     </DashboardLayout>
   );

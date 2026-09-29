@@ -1362,6 +1362,32 @@ function extractApiError(err, fallback) {
   return err?.message || fallback;
 }
 
+/* ------------------------------------------------------------------
+   Input limits for item Quantity and Price.
+   - Quantity: whole number, at most 4 digits (max 9999).
+   - Price: at most 10 digits before the decimal point and 2 decimals
+     (max 9999999999.99).
+   The sanitize helpers strip invalid characters as the user types or
+   pastes, so an invalid value can never sit in the field. The error
+   helpers below are a second line of defence at Add item / Save edit.
+   ------------------------------------------------------------------ */
+const MAX_QTY_DIGITS = 4;
+const MAX_PRICE_INT_DIGITS = 10;
+const MAX_PRICE_DECIMALS = 2;
+
+// Keeps only digits, at most MAX_QTY_DIGITS of them.
+const sanitizeQuantity = (value) => String(value).replace(/\D/g, "").slice(0, MAX_QTY_DIGITS);
+
+// Keeps digits and a single decimal point: at most MAX_PRICE_INT_DIGITS
+// digits before the point and MAX_PRICE_DECIMALS after it.
+const sanitizePrice = (value) => {
+  const cleaned = String(value).replace(/[^\d.]/g, "");
+  const [intRaw = "", ...rest] = cleaned.split(".");
+  const intPart = intRaw.slice(0, MAX_PRICE_INT_DIGITS);
+  if (rest.length === 0) return intPart;
+  return `${intPart}.${rest.join("").slice(0, MAX_PRICE_DECIMALS)}`;
+};
+
 const emptyDraft = { productId: "", productLabel: "", quantity: "1", price: "", remark: "" };
 
 /* Shared by Add item and Edit item so both behave identically.
@@ -1372,6 +1398,7 @@ function getQuantityError(value) {
     return "Quantity must be greater than 0.";
   }
   if (!Number.isInteger(n)) return "Quantity must be a whole number.";
+  if (String(value).length > MAX_QTY_DIGITS) return `Quantity can have at most ${MAX_QTY_DIGITS} digits.`;
   return undefined;
 }
 
@@ -1380,6 +1407,8 @@ function getPriceError(value) {
   if (value === "" || value === null || value === undefined || !Number.isFinite(n) || n <= 0) {
     return "Price must be greater than 0.";
   }
+  const [intPart] = String(value).split(".");
+  if (intPart.length > MAX_PRICE_INT_DIGITS) return `Price can have at most ${MAX_PRICE_INT_DIGITS} digits.`;
   return undefined;
 }
 
@@ -1516,7 +1545,8 @@ const AddReimbursement = () => {
       ...prev,
       productId: String(p.id),
       productLabel: getProductLabel(p),
-      price: getProductPriceHint(p),
+      // A product's default price is also limited to the allowed length.
+      price: sanitizePrice(getProductPriceHint(p)),
     }));
     setProductQuery("");
     setProductOpen(false);
@@ -1922,14 +1952,16 @@ const AddReimbursement = () => {
                 <Label htmlFor="rf-add-qty">
                   Quantity<Required>*</Required>
                 </Label>
+                {/* type="text" + inputMode="numeric": number keypad on mobile, but
+                    maxLength works and letters/symbols (e, +, -) are stripped. */}
                 <Input
                   id="rf-add-qty"
-                  type="number"
-                  min="1"
-                  step="1"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={MAX_QTY_DIGITS}
                   value={draft.quantity}
                   onChange={(e) => {
-                    setDraft((d) => ({ ...d, quantity: e.target.value }));
+                    setDraft((d) => ({ ...d, quantity: sanitizeQuantity(e.target.value) }));
                     setErrors((p) => ({ ...p, draftQuantity: undefined }));
                   }}
                   disabled={submitting}
@@ -1946,13 +1978,12 @@ const AddReimbursement = () => {
                   <CurrencyPrefix>₹</CurrencyPrefix>
                   <input
                     id="rf-add-price"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="Enter price"
                     value={draft.price}
                     onChange={(e) => {
-                      setDraft((d) => ({ ...d, price: e.target.value }));
+                      setDraft((d) => ({ ...d, price: sanitizePrice(e.target.value) }));
                       setErrors((p) => ({ ...p, draftPrice: undefined }));
                     }}
                     disabled={submitting}
@@ -2016,13 +2047,13 @@ const AddReimbursement = () => {
                             </td>
                             <td className="rf-num">
                               <CellInput
-                                type="number"
-                                min="1"
-                                step="1"
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={MAX_QTY_DIGITS}
                                 $right
                                 value={editDraft.quantity}
                                 onChange={(e) => {
-                                  setEditDraft((d) => ({ ...d, quantity: e.target.value }));
+                                  setEditDraft((d) => ({ ...d, quantity: sanitizeQuantity(e.target.value) }));
                                   setEditErrors((p) => ({ ...p, quantity: undefined }));
                                 }}
                                 onKeyDown={handleEditKeyDown}
@@ -2034,13 +2065,12 @@ const AddReimbursement = () => {
                             </td>
                             <td className="rf-num">
                               <CellInput
-                                type="number"
-                                min="0"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 $right
                                 value={editDraft.price}
                                 onChange={(e) => {
-                                  setEditDraft((d) => ({ ...d, price: e.target.value }));
+                                  setEditDraft((d) => ({ ...d, price: sanitizePrice(e.target.value) }));
                                   setEditErrors((p) => ({ ...p, price: undefined }));
                                 }}
                                 onKeyDown={handleEditKeyDown}
