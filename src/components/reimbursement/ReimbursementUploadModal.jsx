@@ -189,11 +189,9 @@ const ErrorText = styled.span`
   color: var(--rf-rust, #b91c1c);
 `;
 
-const TextArea = styled.textarea`
+const RefInput = styled.input`
   width: 100%;
   box-sizing: border-box;
-  min-height: 84px;
-  resize: vertical;
   padding: 10px 12px;
   border: 1px solid var(--rf-line-strong, #cbd5e1);
   border-radius: var(--rf-radius-sm, 8px);
@@ -388,13 +386,14 @@ const ReimbursementUploadModal = ({ record, onClose, onSubmit }) => {
           </Field>
 
           <Field>
-            <Label htmlFor="rf-upload-note">Ref No / Note</Label>
-            <TextArea
+            <Label htmlFor="rf-upload-note">Ref No</Label>
+            <RefInput
               id="rf-upload-note"
+              type="text"
               value={refNote}
               onChange={(e) => setRefNote(e.target.value)}
-              placeholder="Enter a reference number or a note about this document"
-              maxLength={500}
+              placeholder="e.g. INV-001"
+              maxLength={20}
             />
           </Field>
         </Body>
